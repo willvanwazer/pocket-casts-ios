@@ -185,7 +185,7 @@ extension PlayerContainerViewController {
 
         tabsView.themeDidChange()
 
-        let shouldShowTranscript = isTranscriptAvailable(for: playingEpisode)
+        let shouldShowTranscript = playingEpisode is Episode
         let shouldShowNotes = (playingEpisode is Episode)
         let shouldShowChapters = PlaybackManager.shared.chapterCount() > 0
         if !force, shouldShowTranscript == layout.showingTranscript, shouldShowNotes == showingNotes, shouldShowChapters == showingChapters {

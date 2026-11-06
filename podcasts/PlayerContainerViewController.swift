@@ -170,7 +170,6 @@ class PlayerContainerViewController: SimpleNotificationsViewController, PlayerTa
     var showingChapters = false
     var showingNotes = false
     var showingTranscript = false
-    private var requestedTranscriptEpisodeUuid: String?
     var transcriptAvailability: (episodeUuid: String, isAvailable: Bool, hasGeneratedTranscripts: Bool)?
 
     var finalScrollViewConstraint: NSLayoutConstraint?
@@ -291,13 +290,12 @@ class PlayerContainerViewController: SimpleNotificationsViewController, PlayerTa
         scrollToNowPlaying()
     }
 
-    /// Selects the transcript page when the current episode has a transcript.
+    /// Selects the transcript page, including its loading or unavailable state.
     func showTranscriptTab() -> Bool {
+        loadViewIfNeeded()
         guard let index = tabsView.tabs.firstIndex(of: .transcript) else {
-            requestedTranscriptEpisodeUuid = PlaybackManager.shared.currentEpisode?.uuid
             return false
         }
-        requestedTranscriptEpisodeUuid = nil
         didSwitchToTab(index: index)
         return true
     }
@@ -429,15 +427,19 @@ class PlayerContainerViewController: SimpleNotificationsViewController, PlayerTa
     // MARK: - Transcripts
 
     #if !APPCLIP
-    func isTranscriptAvailable(for episode: BaseEpisode) -> Bool {
-        guard let episode = episode as? Episode else { return false }
+    /// Availability informs the split layout's default selection, never page visibility.
+    func refreshTranscriptAvailability() {
+        guard let episode = PlaybackManager.shared.currentEpisode as? Episode else {
+            transcriptAvailability = nil
+            dismissGeneratedTranscriptsPremiumOverlay(dismissTranscript: false)
+            return
+        }
         if let availability = transcriptAvailability, availability.episodeUuid == episode.uuid {
-            return availability.isAvailable
+            return
         }
         transcriptAvailability = (episode.uuid, false, false)
         dismissGeneratedTranscriptsPremiumOverlay(dismissTranscript: false)
         episode.checkTranscriptAvailability()
-        return false
     }
 
     @objc private func transcriptAvailabilityDidChange(_ notification: Notification) {
@@ -448,12 +450,6 @@ class PlayerContainerViewController: SimpleNotificationsViewController, PlayerTa
         let hasGeneratedTranscripts = notification.userInfo?["hasGeneratedTranscripts"] as? Bool ?? false
         transcriptAvailability = (episodeUuid, isAvailable, hasGeneratedTranscripts)
         update()
-        if requestedTranscriptEpisodeUuid == episodeUuid {
-            requestedTranscriptEpisodeUuid = nil
-            if isAvailable {
-                _ = showTranscriptTab()
-            }
-        }
     }
 
     private func showGeneratedTranscriptsPremiumOverlay() {

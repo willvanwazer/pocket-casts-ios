@@ -21,6 +21,9 @@ extension PlayerContainerViewController {
             return
         }
 
+        #if !APPCLIP
+        refreshTranscriptAvailability()
+        #endif
         updateColors()
         updateAvailableTabs()
     }
@@ -39,7 +42,9 @@ extension PlayerContainerViewController {
 
         let shouldShowNotes = (playingEpisode is Episode)
         let shouldShowChapters = PlaybackManager.shared.chapterCount() > 0
-        let shouldShowTranscript = isTranscriptAvailable(for: playingEpisode)
+        // Keep the page discoverable while metadata loads, is unavailable, or fails.
+        // The transcript controller owns the loading, empty, and retry states.
+        let shouldShowTranscript = playingEpisode is Episode
 
         // check to see if the visible views are already configured correctly
         if shouldShowNotes == showingNotes,
