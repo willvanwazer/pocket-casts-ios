@@ -54,7 +54,7 @@ public class UserSatisfactionSurveyManager: NSObject {
         switch event {
         case .thirdEpisodeCompleted, .episodeStarred, .showRated, .filterCreated:
             return !isPlus ? .canShow : .wrongUserType // Free user events
-        case .plusUpgraded, .folderCreated, .bookmarkCreated, .customThemeSet, .referralShared:
+        case .plusUpgraded, .folderCreated, .customThemeSet, .referralShared:
             return isPlus ? .canShow : .wrongUserType // Plus user events
         case .endOfYearStoryShared, .endOfYearCompleted:
             return .deferredEvent
@@ -184,8 +184,6 @@ extension UserSatisfactionSurveyManager: AnalyticsAdapter {
             return .filterCreated
         case AnalyticsEvent.folderSaved.eventName:
             return .folderCreated
-        case AnalyticsEvent.bookmarkEditFormSubmitted.eventName:
-            return .bookmarkCreated
         case AnalyticsEvent.referralPassShared.eventName:
             return .referralShared
         case AnalyticsEvent.settingsAppearanceThemeChanged.eventName:
@@ -332,7 +330,6 @@ enum SurveyTriggerEvent: String, CaseIterable {
     // Plus user events
     case plusUpgraded = "plus_upgraded"
     case folderCreated = "folder_created"
-    case bookmarkCreated = "bookmark_created"
     case customThemeSet = "custom_theme_set"
     case referralShared = "referral_shared"
 

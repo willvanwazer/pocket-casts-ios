@@ -8,14 +8,6 @@ protocol UserEpisodeDetailProtocol: AnyObject {
     func showDeleteConfirmation(userEpisode: UserEpisode)
     func showUpgradeRequired()
     func userEpisodeDetailClosed()
-    func showBookmarks(userEpisode: UserEpisode)
-}
-
-extension UserEpisodeDetailProtocol where Self: UIViewController {
-    func showBookmarks(userEpisode: UserEpisode) {
-        let controller = BookmarkEpisodeListController(episode: userEpisode, displayMode: .standalone)
-        present(controller, animated: true)
-    }
 }
 
 class UserEpisodeDetailViewController: UIViewController {
@@ -98,7 +90,7 @@ class UserEpisodeDetailViewController: UIViewController {
     /// from the content, so this is the only fixed dimension we toggle.
     private static let errorBannerHeight: CGFloat = 100
 
-    enum TableRow { case download, bookmarks, removeFromCloud, upload, upNext, markAsPlayed, editDetails, delete, cancelUpload, cancelDownload }
+    enum TableRow { case download, removeFromCloud, upload, upNext, markAsPlayed, editDetails, delete, cancelUpload, cancelDownload }
     let actionCellId = "UserEpisodeActionCell"
 
     // MARK: - Init

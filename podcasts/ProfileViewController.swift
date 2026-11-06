@@ -86,7 +86,7 @@ class ProfileViewController: PCViewController, UITableViewDataSource, UITableVie
     private let settingsCellId = "SettingsCell"
     private let endOfYearPromptCell = "EndOfYearPromptCell"
 
-    enum TableRow { case informationalBanner, kidsProfile, referralsClaim, allStats, downloaded, starred, listeningHistory, help, uploadedFiles, endOfYearPrompt, bookmarks, playback2026Banner }
+    enum TableRow { case informationalBanner, kidsProfile, referralsClaim, allStats, downloaded, starred, listeningHistory, help, uploadedFiles, endOfYearPrompt, playback2026Banner }
 
     private lazy var informationalBannerCoordinator: InformationalBannerViewCoordinator = {
         let viewModel = InformationalBannerViewModel(bannerType: .profile)
@@ -400,9 +400,6 @@ class ProfileViewController: PCViewController, UITableViewDataSource, UITableVie
             cell.settingsLabel.text = L10n.settingsHelp
         case .endOfYearPrompt:
             return EndOfYearPromptCell()
-        case .bookmarks:
-            cell.settingsImage.image = UIImage(named: "bookmarks-profile")
-            cell.settingsLabel.text = L10n.bookmarks
         }
 
         return cell
@@ -485,9 +482,6 @@ class ProfileViewController: PCViewController, UITableViewDataSource, UITableVie
                 let alert = UIAlertController(title: L10n.playbackNotAvailable, message: L10n.pleaseTryAgainLater, preferredStyle: .alert)
                 present(alert, animated: true)
             }
-        case .bookmarks:
-            let bookmarksController = BookmarksProfileListController()
-            navigationController?.pushViewController(bookmarksController, animated: true)
         case .playback2026Banner:
             Playback2026.start(from: self)
         }
@@ -509,7 +503,7 @@ class ProfileViewController: PCViewController, UITableViewDataSource, UITableVie
 
     private func refreshTableData() {
         var data: [[ProfileViewController.TableRow]]
-        data = [[.allStats, .downloaded, .uploadedFiles, .starred, .bookmarks, .listeningHistory, .help]]
+        data = [[.allStats, .downloaded, .uploadedFiles, .starred, .listeningHistory, .help]]
 
         if EndOfYear.isEndOfYearActive, EndOfYear.isEligible {
             data[0].insert(.endOfYearPrompt, at: 0)
@@ -550,7 +544,6 @@ class ProfileViewController: PCViewController, UITableViewDataSource, UITableVie
 
     @objc private func whatsNewDismissed() {
         showGeneralSettingsIfNeeded()
-        showHeadphoneControlsFromWhatsNew()
     }
 
     private func showGeneralSettingsIfNeeded() {
@@ -558,15 +551,6 @@ class ProfileViewController: PCViewController, UITableViewDataSource, UITableVie
             let generalSettingsViewController = GeneralSettingsViewController()
             navigationController?.pushViewController(generalSettingsViewController, animated: true)
         }
-    }
-
-    // Pushes to the headphone controls if shown from the what's new
-    private func showHeadphoneControlsFromWhatsNew() {
-        guard AnnouncementFlow.current == .bookmarksProfile else { return }
-
-        let controller = HeadphoneSettingsViewController()
-        navigationController?.pushViewController(controller, animated: true)
-        AnnouncementFlow.current = .none
     }
 
     // MARK: - Referrals

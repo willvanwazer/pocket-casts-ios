@@ -84,7 +84,7 @@ class MiniPlayerViewController: SimpleNotificationsViewController {
     private(set) var isTranscriptAvailable = false
 
     /// True while the large screen layout (title and podcast, elapsed and remaining
-    /// time around the progress bar, transcript and bookmark buttons) is installed.
+    /// time around the progress bar and transcript button) is installed.
     private(set) var isLargeLayoutApplied = false
 
     /// Same as `forcedInlineLayout`, for the large screen layout.
@@ -374,12 +374,11 @@ class MiniPlayerViewController: SimpleNotificationsViewController {
         largeTimeRow = timeRow
 
         let transcript = makeTrailingButton(image: UIImage(named: "transcript")?.withRenderingMode(.alwaysTemplate), label: L10n.transcript, action: #selector(transcriptTapped))
-        let bookmark = makeTrailingButton(image: Self.bookmarkGlyph(), label: L10n.addBookmark, action: #selector(bookmarkTapped))
         transcriptButton = transcript
 
         // The artwork, the title, the playback buttons and the progress bar are shared with the
         // compact layout and inserted by `applyLayoutVariant`.
-        let row = UIStackView(arrangedSubviews: [infoStack, timeRow, transcript, bookmark])
+        let row = UIStackView(arrangedSubviews: [infoStack, timeRow, transcript])
         row.translatesAutoresizingMaskIntoConstraints = false
         row.axis = .horizontal
         row.alignment = .center
@@ -407,27 +406,6 @@ class MiniPlayerViewController: SimpleNotificationsViewController {
         label.setContentHuggingPriority(.required, for: .horizontal)
         label.setContentCompressionResistancePriority(.required, for: .horizontal)
         return label
-    }
-
-    /// The bookmark asset's line is thicker than the transcript's, so draw it with the same 2pt line.
-    private static func bookmarkGlyph() -> UIImage {
-        let path = UIBezierPath()
-        path.move(to: CGPoint(x: 4.45, y: 20.6))
-        path.addLine(to: CGPoint(x: 4.45, y: 5.5))
-        path.addArc(withCenter: CGPoint(x: 6.95, y: 5.5), radius: 2.5, startAngle: .pi, endAngle: 1.5 * .pi, clockwise: true)
-        path.addLine(to: CGPoint(x: 17.05, y: 3))
-        path.addArc(withCenter: CGPoint(x: 17.05, y: 5.5), radius: 2.5, startAngle: 1.5 * .pi, endAngle: 0, clockwise: true)
-        path.addLine(to: CGPoint(x: 19.55, y: 20.6))
-        path.addLine(to: CGPoint(x: 13.2, y: 15))
-        path.addQuadCurve(to: CGPoint(x: 10.8, y: 15), controlPoint: CGPoint(x: 12, y: 14))
-        path.close()
-        path.lineWidth = 2
-        path.lineJoinStyle = .round
-
-        return UIGraphicsImageRenderer(size: CGSize(width: 24, height: 24)).image { _ in
-            UIColor.black.setStroke()
-            path.stroke()
-        }.withRenderingMode(.alwaysTemplate)
     }
 
     @available(iOS 26.0, *)
@@ -546,16 +524,6 @@ class MiniPlayerViewController: SimpleNotificationsViewController {
         openFullScreenPlayer { [weak self] in
             self?.fullScreenPlayer?.nowPlayingItem.openTranscript()
         }
-    }
-
-    @objc private func bookmarkTapped() {
-        let action = PlayerAction.addBookmark
-        guard action.isUnlocked else {
-            action.paidFeature?.presentUpgradeController(from: self, source: .bookmarksShelfAction)
-            return
-        }
-
-        PlaybackManager.shared.bookmark(source: .miniPlayer)
     }
 
     @objc private func transcriptAvailabilityDidChange(_ notification: Notification) {

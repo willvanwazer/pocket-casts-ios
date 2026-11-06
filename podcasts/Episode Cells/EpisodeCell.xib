@@ -149,13 +149,7 @@
                                                     <constraint firstAttribute="width" constant="16" id="aao-5L-9wZ"/>
                                                 </constraints>
                                             </imageView>
-                                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="bookmark-icon-episode" translatesAutoresizingMaskIntoConstraints="NO" id="dgh-1x-Q2P">
-                                                <rect key="frame" x="21" y="0.0" width="16" height="16"/>
-                                                <constraints>
-                                                    <constraint firstAttribute="height" constant="16" id="Lr8-id-ZZI"/>
-                                                    <constraint firstAttribute="width" constant="16" id="sch-Oh-jHC"/>
-                                                </constraints>
-                                            </imageView>
+
                                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" horizontalCompressionResistancePriority="1000" text="..." textAlignment="natural" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="CYh-rx-5sN" customClass="ThemeableLabel" customModule="podcasts" customModuleProvider="target">
                                                 <rect key="frame" x="42" y="0.0" width="178" height="16"/>
                                                 <fontDescription key="fontDescription" type="system" weight="medium" pointSize="13"/>
@@ -202,7 +196,6 @@
             <viewLayoutGuide key="safeArea" id="njF-e1-oar"/>
             <connections>
                 <outlet property="actionButton" destination="cxw-Qx-pW3" id="yas-uo-pYZ"/>
-                <outlet property="bookmarkIcon" destination="dgh-1x-Q2P" id="BiU-81-Os6"/>
                 <outlet property="bottomDivider" destination="hSw-lh-n5l" id="5N8-ss-zfm"/>
                 <outlet property="bottomDividerHeightConstraint" destination="Z0u-K8-l7r" id="dDz-RJ-ASr"/>
                 <outlet property="contentStackView" destination="FG0-AH-uw2" id="bPU-ej-1Ke"/>
@@ -229,7 +222,6 @@
         </tableViewCell>
     </objects>
     <resources>
-        <image name="bookmark-icon-episode" width="32" height="32"/>
         <image name="cloud-gold" width="16" height="16"/>
         <image name="discover_tick" width="24" height="24"/>
         <image name="list_downloaded" width="16" height="16"/>

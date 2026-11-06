@@ -42,7 +42,6 @@ class MainTabBarController: UITabBarController, NavigationProtocol {
     /// Not `private`: set from the pulse code in `+Animations`.
     var isPulsingUpNextTarget = false
 
-
     /// The viewDidAppear can trigger more than once per lifecycle, setting this flag on the first did appear prevents use from prompting more than once per lifecycle. But still wait until the tab bar has appeared to do so.
     var viewDidAppearBefore: Bool = false
 
@@ -145,8 +144,6 @@ class MainTabBarController: UITabBarController, NavigationProtocol {
 
         observersForEndOfYearStats()
         observersForPlayback2026()
-        addBookmarkCreatedToastHandler()
-        addBookmarkEnrichmentHandler()
         if FeatureFlag.displayErrorsOnPlayer.enabled {
             setupErrorObservers()
         }
@@ -970,99 +967,6 @@ class MainTabBarController: UITabBarController, NavigationProtocol {
         super.motionEnded(motion, with: event)
         if motion == .motionShake && Settings.shakeToRestartSleepTimer {
             PlaybackManager.shared.restartSleepTimer()
-        }
-    }
-}
-
-// MARK: - Bookmarks
-
-private extension MainTabBarController {
-    /// The edit sheet, where a bookmark is normally titled, only opens over the full screen player
-    /// with the app in the foreground — see `BookmarksPlayerTabController`. A bookmark made from a
-    /// transcript selection is the exception: the transcript opens the sheet itself, wherever it's
-    /// shown from, so those are filtered out below rather than covered here.
-    static var showsBookmarkEditSheet: Bool {
-        UIApplication.shared.applicationState == .active
-        && !CarPlayHelper.isConnectedToCarPlay
-        && NavigationManager.shared.miniPlayer?.playerOpenState != .closed
-    }
-
-    /// Generates the title and passage for the bookmarks that are never shown the edit sheet:
-    /// the ones made with a headphone button, in CarPlay, or while the app is in the background
-    func addBookmarkEnrichmentHandler() {
-        let bookmarkManager = PlaybackManager.shared.bookmarkManager
-
-        bookmarkManager.onBookmarkCreated
-            .receive(on: RunLoop.main)
-            .filter { !$0.isDuplicate && $0.source != .transcript && !Self.showsBookmarkEditSheet }
-            .compactMap { event in
-                bookmarkManager.bookmark(for: event.uuid).map { ($0, event.source) }
-            }
-            .sink { (bookmark: Bookmark, source: BookmarkAnalyticsSource) in
-                Task {
-                    await bookmarkManager.enrich(bookmark, source: source)
-                }
-            }
-            .store(in: &cancellables)
-    }
-
-    // Shows a toast notification when a bookmark is created and we're not in the full screen player
-    func addBookmarkCreatedToastHandler() {
-        let bookmarkManager = PlaybackManager.shared.bookmarkManager
-
-        bookmarkManager.onBookmarkCreated
-            .receive(on: RunLoop.main)
-            .filter { event in
-                event.source != .transcript
-                && UIApplication.shared.applicationState == .active
-                && !CarPlayHelper.isConnectedToCarPlay
-                && NavigationManager.shared.miniPlayer?.playerOpenState == .closed
-            }
-            .compactMap { event in
-                bookmarkManager.bookmark(for: event.uuid).map { ($0, event.source) }
-            }
-            .sink { [weak self] bookmark, source in
-                self?.showToast(for: bookmark, source: source)
-            }
-            .store(in: &cancellables)
-    }
-
-    func showToast(for bookmark: Bookmark, source: BookmarkAnalyticsSource) {
-        let bookmarkManager = PlaybackManager.shared.bookmarkManager
-
-        let title = bookmark.title
-        let message = title == L10n.bookmarkDefaultTitle ? L10n.bookmarkAdded : L10n.bookmarkAddedNotification(title)
-
-        let action = Toast.Action(title: L10n.changeBookmarkTitle) { [weak self] in
-            // Re-read: a generated title may have been saved since the toast was shown
-            let bookmark = bookmarkManager.bookmark(for: bookmark.uuid) ?? bookmark
-            let title = bookmark.title
-
-            let controller = BookmarkEditTitleViewController(manager: bookmarkManager, bookmark: bookmark, state: .updating, style: .themed, source: source, onDismiss: { [weak self] outcome in
-                guard case .saved(let updatedTitle) = outcome, title != updatedTitle else { return }
-
-                self?.handleBookmarkTitleUpdated(updatedTitle: updatedTitle)
-            })
-
-            self?.presentFromRootController(controller)
-        }
-
-        Toast.show(message, actions: [action], theme: .playerTheme)
-    }
-
-    func handleBookmarkTitleUpdated(updatedTitle: String) {
-        Toast.show(L10n.bookmarkUpdatedNotification(updatedTitle), actions: [
-            .init(title: L10n.bookmarkAddedButtonTitle, action: { [weak self] in
-                self?.showBookmarksInPlayer()
-            })
-        ], theme: .playerTheme)
-    }
-
-    func showBookmarksInPlayer() {
-        dismissIfNeeded {
-            NavigationManager.shared.miniPlayer?.openFullScreenPlayer {
-                NavigationManager.shared.miniPlayer?.fullScreenPlayer?.scrollToBookmarks()
-            }
         }
     }
 }

@@ -165,7 +165,7 @@ extension PlayerAction {
     static var defaultActions: [PlayerAction] {
         [
             .effects, .sleepTimer, .routePicker, .shareEpisode, .addToPlaylist, .download,
-            .transcript, .goToPodcast, .addBookmark, .markPlayed,
+            .goToPodcast, .markPlayed,
             .starEpisode, .chromecast, .archive, .videoToggle
         ]
     }
@@ -385,7 +385,7 @@ extension PlayerAction {
     /// Determines whether the action should be available as an option
     /// If false, the action will be hidden from the player shelf and overflow menu
     var isAvailable: Bool {
-        true
+        self != .addBookmark && self != .transcript
     }
 }
 
@@ -526,30 +526,6 @@ enum MultiSelectAction: Int32, CaseIterable, AnalyticsDescribable {
 
         default:
             return true
-        }
-    }
-}
-
-extension BookmarksSort {
-    func option(lastOption: BookmarkSortOption) -> BookmarkSortOption {
-        switch self {
-        case .newestToOldest:
-            return .newestToOldest
-        case .oldestToNewest:
-            return .oldestToNewest
-        case .timestamp:
-            return lastOption
-        }
-    }
-
-    init(option: BookmarkSortOption) {
-        switch option {
-        case .newestToOldest:
-            self = .newestToOldest
-        case .oldestToNewest:
-            self = .oldestToNewest
-        case .timestamp, .episode, .podcastAndEpisode:
-            self = .timestamp
         }
     }
 }

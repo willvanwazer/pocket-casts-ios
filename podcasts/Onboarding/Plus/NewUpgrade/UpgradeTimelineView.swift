@@ -8,7 +8,7 @@ struct TimelineEvent: Hashable {
 
 extension TimelineEvent {
     static var sampleEvents: [TimelineEvent] = [
-        TimelineEvent(iconName: "unlocked-large", title: "Today", detail: "Get access to Folders, Shuffle, Bookmarks, and exclusive content"),
+        TimelineEvent(iconName: "unlocked-large", title: "Today", detail: "Get access to Folders, Shuffle, and exclusive content"),
         TimelineEvent(iconName: "mail", title: "Day 24", detail: "We’ll notify you about your trial ending."),
         TimelineEvent(iconName: "star_empty", title: "Day 31", detail: "You’ll be charged on September 31th. Cancel anytime before.")
     ]

@@ -15,8 +15,6 @@ protocol NowPlayingActionsDelegate: AnyObject {
     func chromecastTapped()
     func markPlayedTapped()
     func archiveTapped()
-    func bookmarkTapped()
-    func transcriptTapped()
     func downloadTapped()
     func videoToggleTapped()
     func sharedRoutePicker(largeSize: Bool) -> PCRoutePickerView
@@ -44,7 +42,6 @@ extension NowPlayingPlayerItemViewController: NowPlayingActionsDelegate {
 
         // load the first 4 actions into the player, followed by an overflow icon
         playerControlsStackView.removeAllSubviews()
-        smartBookmarksTipAnchor = nil
         for action in actions {
             if !action.canBePerformedOn(episode: playingEpisode) { continue }
 
@@ -65,14 +62,12 @@ extension NowPlayingPlayerItemViewController: NowPlayingActionsDelegate {
             overflowButton.accessibilityLabel = L10n.accessibilityMoreActions
             addToShelf(on: overflowButton)
 
-            if smartBookmarksTipAnchor == nil {
-                smartBookmarksTipAnchor = overflowButton
-            }
-
             return false
         }
 
         switch action {
+        case .addBookmark, .transcript:
+            return true
         case .effects:
             let effects = PlaybackManager.shared.effects
 
@@ -153,29 +148,6 @@ extension NowPlayingPlayerItemViewController: NowPlayingActionsDelegate {
             archiveButton.accessibilityLabel = L10n.archive
 
             addToShelf(on: archiveButton)
-
-        case .addBookmark:
-            let button = UIButton(frame: CGRect.zero)
-            button.isPointerInteractionEnabled = true
-            button.imageView?.tintColor = ThemeColor.playerContrast02()
-            button.setImage(UIImage(named: action.largeIconName(episode: playingEpisode)), for: .normal)
-            button.addTarget(self, action: #selector(bookmarkTapped(_:)), for: .touchUpInside)
-            button.accessibilityLabel = L10n.addBookmark
-
-            addToShelf(on: button)
-            smartBookmarksTipAnchor = button
-
-        case .transcript:
-            #if !APPCLIP
-            let button = TranscriptShelfButton(frame: CGRect.zero)
-            button.isPointerInteractionEnabled = true
-            button.imageView?.tintColor = ThemeColor.playerContrast02()
-            button.setImage(UIImage(named: action.largeIconName(episode: playingEpisode)), for: .normal)
-            button.addTarget(self, action: #selector(transcriptTapped(_:)), for: .touchUpInside)
-            button.accessibilityLabel = L10n.transcript
-
-            addToShelf(on: button)
-            #endif
 
         case .download:
             let button = UIButton(frame: CGRect.zero)
@@ -292,18 +264,6 @@ extension NowPlayingPlayerItemViewController: NowPlayingActionsDelegate {
         return routePicker
     }
 
-    func bookmarkTapped() {
-        #if !APPCLIP
-        PlaybackManager.shared.bookmark(source: .player)
-        #endif
-    }
-
-    func transcriptTapped() {
-        #if !APPCLIP
-        openTranscript()
-        #endif
-    }
-
     func videoToggleTapped() {
         PlaybackManager.shared.toggleVideoRendering()
     }
@@ -407,32 +367,6 @@ extension NowPlayingPlayerItemViewController: NowPlayingActionsDelegate {
         #if !APPCLIP
         shelfButtonTapped(.shareEpisode)
         shareEpisode(sender: sender)
-        #endif
-    }
-
-    @objc private func bookmarkTapped(_ sender: UIButton) {
-        #if !APPCLIP
-        let action = PlayerAction.addBookmark
-        shelfButtonTapped(action)
-
-        guard action.isUnlocked else {
-            action.paidFeature?.presentUpgradeController(from: self, source: .bookmarksShelfAction)
-            return
-        }
-
-        bookmarkTapped()
-        #endif
-    }
-
-    @objc private func transcriptTapped(_ sender: UIButton) {
-        #if !APPCLIP
-        guard let transcriptButton = sender as? TranscriptShelfButton, transcriptButton.isTranscriptEnabled else {
-            Toast.show(TranscriptError.notAvailable.localizedDescription)
-            return
-        }
-        shelfButtonTapped(.transcript)
-
-        openTranscript()
         #endif
     }
 
@@ -587,51 +521,6 @@ extension NowPlayingPlayerItemViewController {
         Analytics.track(.playerShelfActionTapped, properties: ["action": button.analyticsDescription, "from": "shelf"])
     }
 }
-
-// MARK: - Smart Bookmarks tip
-
-#if !APPCLIP
-extension NowPlayingPlayerItemViewController {
-    /// Shows the one-time tip that points at the action used to add a bookmark, for the release that introduces Smart Bookmarks.
-    func showSmartBookmarksTipIfNeeded() {
-        guard
-            SmartBookmarksPromo.shouldShowPlayerTip,
-            smartBookmarksTip == nil,
-            let anchor = smartBookmarksTipAnchor,
-            let episode = PlaybackManager.shared.currentEpisode,
-            PlayerAction.addBookmark.canBePerformedOn(episode: episode)
-        else {
-            return
-        }
-
-        smartBookmarksTip = presentTip(
-            title: L10n.bookmarksPlayerTipTitle,
-            message: L10n.bookmarksPlayerTipMessage,
-            anchor: .item(anchor),
-            arrow: .down,
-            idealSize: CGSize(width: 240, height: 64),
-            onTap: { [weak self] in
-                self?.dismissSmartBookmarksTip()
-            },
-            onDismiss: { [weak self] in
-                self?.dismissSmartBookmarksTip()
-            },
-            onShow: {
-                Settings.shouldShowBookmarksPlayerTip = false
-            }
-        )
-    }
-
-    func dismissSmartBookmarksTip() {
-        guard smartBookmarksTip != nil else { return }
-
-        Settings.shouldShowBookmarksPlayerTip = false
-        smartBookmarksTip?.dismiss(animated: true) { [weak self] in
-            self?.smartBookmarksTip = nil
-        }
-    }
-}
-#endif
 
 extension NowPlayingPlayerItemViewController: @preconcurrency AVRoutePickerViewDelegate {
     func routePickerViewWillBeginPresentingRoutes(_ routePickerView: AVRoutePickerView) {

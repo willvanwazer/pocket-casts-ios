@@ -1,3 +1,4 @@
+import PocketCastsDataModel
 import PocketCastsUtils
 import UIKit
 
@@ -31,7 +32,7 @@ class PlayerContainerViewController: SimpleNotificationsViewController, PlayerTa
             // The player tabs are a spatial carousel, not text, so keep the paging
             // left-to-right in every language. Otherwise UIKit mirrors the scroll
             // view under RTL and the index-based paging math (offset == index * width)
-            // opens the last tab (Bookmarks) instead of Now Playing. See #1952.
+            // opens the last tab instead of Now Playing. See #1952.
             mainScrollView.semanticContentAttribute = .forceLeftToRight
             mainScrollView.contentInsetAdjustmentBehavior = .never
 
@@ -43,8 +44,6 @@ class PlayerContainerViewController: SimpleNotificationsViewController, PlayerTa
     }
 
     @IBOutlet var headerHeightConstraint: NSLayoutConstraint!
-
-    @IBOutlet weak var transcriptContainerView: UIView!
 
     /// Whether the player paints the blurred artwork background and its items are transparent
     /// over it, which is always, except in the App Clip.
@@ -82,9 +81,6 @@ class PlayerContainerViewController: SimpleNotificationsViewController, PlayerTa
     var largeScreenLayoutStorage: AnyObject?
 
     let artworkBackground = PlayerArtworkBackgroundView()
-    /// A copy of the background under the transcript that covers Now Playing.
-    let transcriptBackground = PlayerArtworkBackgroundView()
-    var transcriptBackgroundConstraints: [NSLayoutConstraint] = []
     #endif
 
     lazy var nowPlayingItem: NowPlayingPlayerItemViewController = {
@@ -120,23 +116,17 @@ class PlayerContainerViewController: SimpleNotificationsViewController, PlayerTa
         return item
     }()
 
-    lazy var bookmarksItem: BookmarksPlayerTabController = {
-        let playbackManager = PlaybackManager.shared
-        let bookmarkManager = playbackManager.bookmarkManager
-        let item = BookmarksPlayerTabController(bookmarkManager: bookmarkManager,
-                                                playbackManager: playbackManager)
-
-        item.view.translatesAutoresizingMaskIntoConstraints = false
-        item.containerDelegate = self
-        return item
-    }()
-
     lazy var transcriptsItem: TranscriptViewController = {
         let playbackManager = PlaybackManager.shared
         let item = TranscriptViewController(playbackManager: playbackManager)
+        item.isPlayerTab = true
+        item.playButtonTapped = { _ in PlaybackManager.shared.playPause() }
+        item.showGeneratedTranscriptsPremiumOverlay = { [weak self] in
+            self?.showGeneratedTranscriptsPremiumOverlay()
+        }
 
-        item.view.translatesAutoresizingMaskIntoConstraints = false
         item.usesLargeScreenStyle = usesArtworkStyle
+        item.view.translatesAutoresizingMaskIntoConstraints = false
         if usesLargeScreenLayout {
             item.view.maximumContentSizeCategory = Self.largeScreenMaximumContentSizeCategory
         }
@@ -148,6 +138,7 @@ class PlayerContainerViewController: SimpleNotificationsViewController, PlayerTa
     private lazy var generatedTranscriptsPremiumOverlay: GeneratedTranscriptsPremiumOverlay = {
         let playbackManager = PlaybackManager.shared
         let item = GeneratedTranscriptsPremiumOverlay(playbackManager: playbackManager)
+        item.largeScreenBackground = artworkBackground
         item.view.translatesAutoresizingMaskIntoConstraints = false
         item.dismissTranscript = { [weak self] in
             self?.dismissGeneratedTranscriptsPremiumOverlay(dismissTranscript: true)
@@ -178,7 +169,9 @@ class PlayerContainerViewController: SimpleNotificationsViewController, PlayerTa
 
     var showingChapters = false
     var showingNotes = false
-    var showingBookmarks = false
+    var showingTranscript = false
+    private var requestedTranscriptEpisodeUuid: String?
+    var transcriptAvailability: (episodeUuid: String, isAvailable: Bool, hasGeneratedTranscripts: Bool)?
 
     var finalScrollViewConstraint: NSLayoutConstraint?
 
@@ -197,13 +190,7 @@ class PlayerContainerViewController: SimpleNotificationsViewController, PlayerTa
         update()
 
         NotificationCenter.default.addObserver(self, selector: #selector(handleAppWillBecomeActive), name: UIApplication.willEnterForegroundNotification, object: nil)
-
-        // To avoid weird animations when apearing, we add the transcript view here
-        #if !APPCLIP
-        configureTranscriptView()
-        #endif
     }
-
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
@@ -216,9 +203,10 @@ class PlayerContainerViewController: SimpleNotificationsViewController, PlayerTa
         super.viewDidDisappear(animated)
 
         #if !APPCLIP
-        if nowPlayingItem.displayTranscript {
+        if isBeingDismissed, transcriptsItem.parent != nil {
             transcriptsItem.didDisappear()
-            generatedTranscriptsPremiumOverlay.didDisappear()
+            transcriptsItem.willBeRemovedFromPlayer()
+            dismissGeneratedTranscriptsPremiumOverlay(dismissTranscript: false)
         }
         if #available(iOS 27.1, *) {
             largeScreenViewDidDisappear()
@@ -234,7 +222,6 @@ class PlayerContainerViewController: SimpleNotificationsViewController, PlayerTa
         if #available(iOS 27.1, *) {
             updateLargeScreenLayoutIfNeeded()
         }
-        updateTranscriptBackground()
         #endif
         adjustPlayerNoSlidingRegion()
     }
@@ -288,10 +275,6 @@ class PlayerContainerViewController: SimpleNotificationsViewController, PlayerTa
         scroll(to: .nowPlaying)
     }
 
-    func scrollToBookmarks() {
-        scroll(to: .bookmarks)
-    }
-
     func navigateToPodcast() {
         guard let podcast = PlaybackManager.shared.currentPodcast else {
             return
@@ -305,13 +288,16 @@ class PlayerContainerViewController: SimpleNotificationsViewController, PlayerTa
     }
 
     func dismissTranscript() {
-        nowPlayingItem.displayTranscript = false
+        scrollToNowPlaying()
     }
 
-    /// Selects the transcript tab, which only exists next to Now Playing in the large screen
-    /// layout. Returns `false` when there's no such tab.
+    /// Selects the transcript page when the current episode has a transcript.
     func showTranscriptTab() -> Bool {
-        guard let index = tabsView.tabs.firstIndex(of: .transcript) else { return false }
+        guard let index = tabsView.tabs.firstIndex(of: .transcript) else {
+            requestedTranscriptEpisodeUuid = PlaybackManager.shared.currentEpisode?.uuid
+            return false
+        }
+        requestedTranscriptEpisodeUuid = nil
         didSwitchToTab(index: index)
         return true
     }
@@ -328,6 +314,9 @@ class PlayerContainerViewController: SimpleNotificationsViewController, PlayerTa
         addCustomObserver(Constants.Notifications.playbackTrackChanged, selector: #selector(update))
         addCustomObserver(Constants.Notifications.podcastChaptersDidUpdate, selector: #selector(update))
         addCustomObserver(Constants.Notifications.themeChanged, selector: #selector(themeDidChange))
+        #if !APPCLIP
+        addCustomObserver(Constants.Notifications.episodeTranscriptAvailabilityChanged, selector: #selector(transcriptAvailabilityDidChange(_:)))
+        #endif
     }
 
     private func setupGestures() {
@@ -437,81 +426,57 @@ class PlayerContainerViewController: SimpleNotificationsViewController, PlayerTa
         didSwitchToTab(index: tabsView.currentTab)
     }
 
-    // MARK: - Hide/Show tabs
-
-    func scrollView(isEnabled: Bool) {
-        var isEnabled = isEnabled
-        #if !APPCLIP
-        if #available(iOS 27.1, *), isShowingLargeScreenSplit {
-            // The transcript only covers Now Playing, so the tabs next to it keep paging.
-            isEnabled = true
-        }
-        #endif
-        mainScrollView.isScrollEnabled = isEnabled
-        view.layoutIfNeeded()
-    }
-
     // MARK: - Transcripts
 
     #if !APPCLIP
-    func showTranscript() {
-        var transcriptParent: UIViewController = self
-        if #available(iOS 27.1, *), let largeScreenTranscriptParent {
-            transcriptParent = largeScreenTranscriptParent
+    func isTranscriptAvailable(for episode: BaseEpisode) -> Bool {
+        guard let episode = episode as? Episode else { return false }
+        if let availability = transcriptAvailability, availability.episodeUuid == episode.uuid {
+            return availability.isAvailable
         }
-        transcriptParent.addChild(transcriptsItem)
-        transcriptContainerView.addSubview(transcriptsItem.view)
-        transcriptsItem.view.anchorToAllSidesOf(view: transcriptContainerView)
-        transcriptsItem.didMove(toParent: transcriptParent)
-        updateTranscriptBackground()
-        transcriptsItem.willBeAddedToPlayer()
-        transcriptsItem.themeDidChange()
-        transcriptsItem.showGeneratedTranscriptsPremiumOverlay = { [weak self] in
-            UIView.animate(withDuration: 0.25) {
-                self?.showGeneratedTranscriptsPremiumOverlay()
+        transcriptAvailability = (episode.uuid, false, false)
+        dismissGeneratedTranscriptsPremiumOverlay(dismissTranscript: false)
+        episode.checkTranscriptAvailability()
+        return false
+    }
+
+    @objc private func transcriptAvailabilityDidChange(_ notification: Notification) {
+        guard let episodeUuid = notification.userInfo?["episodeUuid"] as? String,
+              let isAvailable = notification.userInfo?["isAvailable"] as? Bool,
+              episodeUuid == PlaybackManager.shared.currentEpisode?.uuid else { return }
+
+        let hasGeneratedTranscripts = notification.userInfo?["hasGeneratedTranscripts"] as? Bool ?? false
+        transcriptAvailability = (episodeUuid, isAvailable, hasGeneratedTranscripts)
+        update()
+        if requestedTranscriptEpisodeUuid == episodeUuid {
+            requestedTranscriptEpisodeUuid = nil
+            if isAvailable {
+                _ = showTranscriptTab()
             }
         }
-        headerView.accessibilityElementsHidden = true
-        nowPlayingItem.view.accessibilityElements = [nowPlayingItem.bottomControlsStackView, nowPlayingItem.errorContainer].compactMap { $0 }
     }
 
     private func showGeneratedTranscriptsPremiumOverlay() {
+        guard transcriptsItem.parent != nil, generatedTranscriptsPremiumOverlay.parent == nil else { return }
+        generatedTranscriptsPremiumOverlay.largeScreenBackground = artworkBackground
+        transcriptsItem.addChild(generatedTranscriptsPremiumOverlay)
+        transcriptsItem.view.addSubview(generatedTranscriptsPremiumOverlay.view)
+        generatedTranscriptsPremiumOverlay.view.anchorToAllSidesOf(view: transcriptsItem.view)
+        generatedTranscriptsPremiumOverlay.didMove(toParent: transcriptsItem)
         generatedTranscriptsPremiumOverlay.didAppear()
-        addChild(generatedTranscriptsPremiumOverlay)
-        view.addSubview(generatedTranscriptsPremiumOverlay.view)
-        generatedTranscriptsPremiumOverlay.view.anchorToAllSidesOf(view: view)
-        generatedTranscriptsPremiumOverlay.didMove(toParent: self)
     }
 
     private func dismissGeneratedTranscriptsPremiumOverlay(dismissTranscript: Bool) {
-        UIView.animate(withDuration: 0.25) { [weak self] in
-            self?.generatedTranscriptsPremiumOverlay.didDisappear()
-            self?.generatedTranscriptsPremiumOverlay.willMove(toParent: nil)
-            self?.generatedTranscriptsPremiumOverlay.removeFromParent()
-            self?.generatedTranscriptsPremiumOverlay.view.removeFromSuperview()
-        } completion: { [weak self] _ in
-            if dismissTranscript {
-                self?.dismissTranscript()
-            }
+        guard generatedTranscriptsPremiumOverlay.parent != nil else { return }
+        // Keep the gate in place when closing it; swiping back must not reveal a paid transcript.
+        if dismissTranscript {
+            scrollToNowPlaying()
+            return
         }
-    }
-
-    func hideTranscript() {
-        transcriptsItem.willBeRemovedFromPlayer()
-        transcriptsItem.willMove(toParent: nil)
-        transcriptsItem.removeFromParent()
-        transcriptsItem.view.removeFromSuperview()
-        transcriptsItem.didDisappear()
-        headerView.accessibilityElementsHidden = false
-        nowPlayingItem.view.accessibilityElements = nil
-    }
-
-    private func configureTranscriptView() {
-        transcriptContainerView.bottomAnchor.constraint(equalTo: nowPlayingItem.bottomControlsStackView.topAnchor).isActive = true
-        coverWithTranscriptBackground()
-
-        transcriptContainerView.addSubview(transcriptsItem.view)
-        transcriptsItem.view.anchorToAllSidesOf(view: transcriptContainerView)
+        generatedTranscriptsPremiumOverlay.didDisappear()
+        generatedTranscriptsPremiumOverlay.willMove(toParent: nil)
+        generatedTranscriptsPremiumOverlay.view.removeFromSuperview()
+        generatedTranscriptsPremiumOverlay.removeFromParent()
     }
 
     // MARK: - Artwork Background
@@ -533,32 +498,6 @@ class PlayerContainerViewController: SimpleNotificationsViewController, PlayerTa
         artworkBackground.reloadArtwork(for: PlaybackManager.shared.currentEpisode)
     }
 
-    /// The transcript covers Now Playing with a copy of the player background, not a solid color.
-    func coverWithTranscriptBackground() {
-        NSLayoutConstraint.deactivate(transcriptBackgroundConstraints)
-        transcriptBackgroundConstraints = []
-        transcriptBackground.translatesAutoresizingMaskIntoConstraints = false
-        transcriptContainerView.clipsToBounds = true
-        transcriptContainerView.backgroundColor = .clear
-        transcriptContainerView.insertSubview(transcriptBackground, at: 0)
-        artworkBackground.addCopy(transcriptBackground)
-    }
-
-    /// Lines the transcript's copy of the player background up with the original, once the
-    /// transcript is on screen and they share a view hierarchy.
-    func updateTranscriptBackground() {
-        guard transcriptBackgroundConstraints.isEmpty,
-              transcriptContainerView.window != nil,
-              transcriptBackground.superview != nil else { return }
-
-        transcriptBackgroundConstraints = [
-            transcriptBackground.leadingAnchor.constraint(equalTo: artworkBackground.leadingAnchor),
-            transcriptBackground.topAnchor.constraint(equalTo: artworkBackground.topAnchor),
-            transcriptBackground.widthAnchor.constraint(equalTo: artworkBackground.widthAnchor),
-            transcriptBackground.heightAnchor.constraint(equalTo: artworkBackground.heightAnchor)
-        ]
-        NSLayoutConstraint.activate(transcriptBackgroundConstraints)
-    }
     #endif
 }
 
@@ -584,6 +523,7 @@ private extension PlayerContainerViewController {
         }
         #endif
 
+        adjustPlayerNoSlidingRegion()
         let offset = CGFloat(index) * mainScrollView.frame.width
 
         UIView.animate(withDuration: 0.5, delay: 0, usingSpringWithDamping: 1.0, initialSpringVelocity: 0, options: [.allowUserInteraction]) {

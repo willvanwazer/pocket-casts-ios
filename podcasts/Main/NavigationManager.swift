@@ -67,7 +67,6 @@ class NavigationManager {
     static let profileRowDownloadsKey = "downloads"
     static let profileRowFilesKey = "files"
     static let profileRowStarredKey = "starred"
-    static let profileRowBookmarksKey = "bookmarks"
     static let profileRowListeningHistoryKey = "history"
     static let profileRowHelpKey = "help"
     static let profileRowEndOfYearKey = "playback"
@@ -313,8 +312,6 @@ class NavigationManager {
             mainController?.navigateToProfile(row: .uploadedFiles, animated: animated)
         case NavigationManager.profileRowStarredKey:
             mainController?.navigateToProfile(row: .starred, animated: animated)
-        case NavigationManager.profileRowBookmarksKey:
-            mainController?.navigateToProfile(row: .bookmarks, animated: animated)
         case NavigationManager.profileRowListeningHistoryKey:
             mainController?.navigateToProfile(row: .listeningHistory, animated: animated)
         case NavigationManager.profileRowHelpKey:

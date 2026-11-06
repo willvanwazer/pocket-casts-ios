@@ -15,7 +15,7 @@ struct UpgradeBannerView: View {
                 .foregroundStyle(theme.primaryText01)
                 .font(size: 18, style: .body, weight: .bold)
                 .multilineTextAlignment(.center)
-            Text(L10n.upgradeAccountInfo)
+            Text(L10n.upgradeAccountFeaturesInfo)
                 .foregroundStyle(theme.primaryText02)
                 .font(size: 13, style: .body, weight: .regular)
                 .multilineTextAlignment(.center)

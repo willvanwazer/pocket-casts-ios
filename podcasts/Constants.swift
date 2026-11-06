@@ -198,17 +198,6 @@ struct Constants {
                                                       defaultValue: HeadphoneControlAction.skipForward)
         }
 
-        enum bookmarks {
-            static let creationSound = SettingValue("bookmarks.creationSound", defaultValue: true)
-
-            static let playerSort = SettingValue("bookmarks.playerSort", defaultValue: BookmarkSortOption.newestToOldest)
-            static let podcastSort = SettingValue("bookmarks.podcastSort", defaultValue: BookmarkSortOption.newestToOldest)
-            static let episodeSort = SettingValue("bookmarks.episodeSort", defaultValue: BookmarkSortOption.newestToOldest)
-            static let profileSort = SettingValue("bookmarks.profileSort", defaultValue: BookmarkSortOption.newestToOldest)
-
-            static let showPlayerTip = "bookmarks.showPlayerTip"
-        }
-
         enum appearance {
             static let darkUpNextTheme = SettingValue("appearance.darkUpNextTheme", defaultValue: true)
             static var tabBarMinimizingEnabled: SettingValue<Bool> {
@@ -271,8 +260,6 @@ struct Constants {
         /// there is a chance it doesn't have a receipt and we won't be able to do a server check
         /// However Apple considers this user to be eligible
         public static let offerEligibilityDefaultValue = true
-
-        static let bookmarkMaxTitleLength = 100
 
         static let numberOfEpisodesListenedRequiredToRate = 2
     }
@@ -432,12 +419,10 @@ enum PlusUpgradeViewSource: String {
     case referral
     case deselectChapterWhatsNew = "deselect_chapters_whats_new"
     case syncedTranscripts = "synced_transcripts"
-    case bookmarksLocked = "bookmarks_locked"
     case overflowMenu = "overflow_menu"
     case slumber
     case deselectChapters = "deselect_chapters"
     case headphoneSettings =  "headphone_settings"
-    case bookmarksShelfAction = "bookmarks_shelf_action"
     case whatsNew = "whats_new"
     case sonosLink = "sonos_link"
     case deepLink
@@ -498,13 +483,4 @@ enum HeadphoneControlAction: JSONCodable {
 
     /// If the episode has chapters, then skip to the next chapter, if not default to .skipForward behavior
     case nextChapter
-
-    /// Create a new bookmark for the currently playing episode
-    case addBookmark
-}
-
-// MARK: - Bookmark Sorting
-
-enum BookmarkSortOption: JSONCodable {
-    case newestToOldest, oldestToNewest, timestamp, episode, podcastAndEpisode
 }

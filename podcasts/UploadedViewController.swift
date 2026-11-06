@@ -125,8 +125,6 @@ class UploadedViewController: PCViewController, UserEpisodeDetailProtocol {
         reloadLocalFiles()
 
         Analytics.track(.uploadedFilesShown)
-
-        listenForChangedBookmarks()
     }
 
     var fileURL: URL?
@@ -354,32 +352,6 @@ extension UploadedViewController: AnalyticsSourceProvider {
 }
 
 private extension UploadedViewController {
-    func listenForChangedBookmarks() {
-        let manager = PlaybackManager.shared.bookmarkManager
-
-        manager.onBookmarkCreated
-            .filter { $0.podcast == nil }
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                self?.handleReloadFromNotification()
-            }
-            .store(in: &cancellables)
-
-        manager.onBookmarksDeleted
-            .filter { $0.items.contains(where: { $0.podcast == nil }) }
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                self?.handleReloadFromNotification()
-            }
-            .store(in: &cancellables)
-
-        PaidFeature.bookmarks.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                self?.handleReloadFromNotification()
-            }
-            .store(in: &cancellables)
-    }
 }
 
 extension UploadedViewController: UIDocumentPickerDelegate {

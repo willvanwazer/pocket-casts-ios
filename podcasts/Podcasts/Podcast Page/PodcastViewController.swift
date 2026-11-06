@@ -59,7 +59,6 @@ protocol PodcastActionsDelegate: AnyObject {
     var podcastRatingViewModel: PodcastRatingViewModel { get }
     var ratingView: UIView { get }
 
-    func showBookmarks()
     func showEpisodes()
     func showYouMightLike()
     func showLogin(message: String?)
@@ -93,18 +92,13 @@ class PodcastViewController: PCViewController, PodcastActionsDelegate, MultiSele
         return navigator
     }()
 
-    /// The bookmarks tab, created the first time it's displayed
-    var bookmarkList: BookmarkListController?
-
     enum ViewMode {
         case episodes
-        case bookmarks
         case youMightLike
 
         var analyticsValue: String {
             switch self {
             case .episodes: return "episodes"
-            case .bookmarks: return "bookmarks"
             case .youMightLike: return "you_might_like"
             }
         }
@@ -154,7 +148,7 @@ class PodcastViewController: PCViewController, PodcastActionsDelegate, MultiSele
     var isMultiSelectEnabled = false {
         didSet {
             setHidesEnclosingTabBar(isMultiSelectEnabled, animated: false)
-            // For non-episode cells we don't enable editing. It needs to be for Bookmarks and already if for You Might Like.
+            // Only episode rows support table editing.
             if currentViewMode == .episodes {
                 self.episodesTable.beginUpdates()
                 self.episodesTable.setEditing(isMultiSelectEnabled, animated: true)
@@ -174,13 +168,8 @@ class PodcastViewController: PCViewController, PodcastActionsDelegate, MultiSele
             } else {
                 self.selectedEpisodes.removeAll()
             }
-            // The bookmarks tab shows the action bar of the bookmarks lists instead of the table's own footer
-            if currentViewMode == .bookmarks {
-                self.multiSelectFooter.isHidden = true
-            }
             self.updateMultiSelectNavBar()
             searchController?.isOverflowButtonEnabled = !self.isMultiSelectEnabled
-            bookmarkList?.isOverflowButtonEnabled = !self.isMultiSelectEnabled
         }
     }
 
@@ -347,7 +336,6 @@ class PodcastViewController: PCViewController, PodcastActionsDelegate, MultiSele
         NotificationCenter.default.addObserver(self, selector: #selector(podcastUpdated(_:)), name: Constants.Notifications.podcastUpdated, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(folderChanged(_:)), name: Constants.Notifications.folderChanged, object: nil)
 
-        listenForBookmarkChanges()
         setupLogin()
 
         setupRefreshControl()
@@ -392,32 +380,6 @@ class PodcastViewController: PCViewController, PodcastActionsDelegate, MultiSele
         if let message {
             Toast.show(message)
         }
-    }
-
-    private func listenForBookmarkChanges() {
-        let bookmarkManager = PlaybackManager.shared.bookmarkManager
-
-        // Refresh when a bookmark is added to our podcast
-        bookmarkManager.onBookmarkCreated
-            .filter({ [weak self] event in
-                event.podcast == self?.podcast?.uuid
-            })
-            .receive(on: DispatchQueue.main)
-            .sink(receiveValue: { [weak self] _ in
-                self?.upNextChanged()
-            })
-            .store(in: &cancellables)
-
-        // Reload when a bookmark is deleted
-        bookmarkManager.onBookmarksDeleted
-            .filter({ [weak self] event in
-                event.items.contains(where: { $0.podcast == self?.podcast?.uuid })
-            })
-            .receive(on: DispatchQueue.main)
-            .sink(receiveValue: { [weak self] _ in
-                self?.upNextChanged()
-            })
-            .store(in: &cancellables)
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -561,9 +523,6 @@ class PodcastViewController: PCViewController, PodcastActionsDelegate, MultiSele
     }
 
     func reloadData() {
-        if currentViewMode == .bookmarks {
-            bookmarkList?.rebuildRows()
-        }
         episodesTable.reloadData()
     }
 
@@ -1285,10 +1244,6 @@ class PodcastViewController: PCViewController, PodcastActionsDelegate, MultiSele
         switchViewMode(to: .episodes)
     }
 
-    func showBookmarks() {
-        switchViewMode(to: .bookmarks)
-    }
-
     func showYouMightLike() {
         switchViewMode(to: .youMightLike)
     }
@@ -1535,8 +1490,6 @@ class PodcastViewController: PCViewController, PodcastActionsDelegate, MultiSele
     }
 
     private func switchViewMode(to mode: ViewMode) {
-        // Clear any externally presented action bar when switching modes
-        bookmarkList?.removeActionBar()
         if isMultiSelectEnabled {
             isMultiSelectEnabled = false
         }
@@ -1554,15 +1507,6 @@ class PodcastViewController: PCViewController, PodcastActionsDelegate, MultiSele
                     await loadRecommendations()
                 }
             }
-        case .bookmarks:
-            if bookmarkList == nil {
-                setupBookmarkList() // Reloads on init
-            } else {
-                bookmarkList?.viewModel.reload()
-            }
-
-            // The multi select state is kept when switching between the tabs
-            bookmarkList?.updateActionBar()
         }
         Analytics.track(.podcastsScreenTabTapped, properties: ["value": mode.analyticsValue])
         reloadData()
@@ -1598,32 +1542,5 @@ extension PodcastViewController: UIPopoverPresentationControllerDelegate {
 extension PodcastViewController: SFSafariViewControllerDelegate {
     func safariViewControllerDidFinish(_ controller: SFSafariViewController) {
         controller.delegate = nil
-    }
-}
-
-// MARK: - BookmarkListRouter
-
-extension PodcastViewController: BookmarkListRouter {
-    func bookmarkPlay(_ bookmark: Bookmark) async throws {
-        try await PlaybackManager.shared.playBookmark(bookmark, source: .podcasts)
-    }
-
-    func bookmarkEdit(_ bookmark: Bookmark) {
-        let controller = BookmarkEditTitleViewController(manager: PlaybackManager.shared.bookmarkManager, bookmark: bookmark, state: .updating, style: .themed, source: .podcasts)
-
-        present(controller, animated: true)
-    }
-
-    func bookmarkShare(_ bookmark: Bookmark) {
-        guard let episode = bookmark.episode as? Episode else {
-            return
-        }
-        Analytics.track(.bookmarkShareTapped, source: analyticsSource, properties: ["podcast_uuid": episode.podcastUuid, "episode_uuid": bookmark.episodeUuid])
-        SharingModal.show(option: .bookmark(episode, bookmark.time), from: .podcastScreen, in: self)
-    }
-
-    func dismissBookmarksList() {
-        // For tab-based bookmarks, we switch to episodes view instead of dismissing
-        switchViewMode(to: .episodes)
     }
 }

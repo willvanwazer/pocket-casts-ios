@@ -3,8 +3,8 @@ import XCTest
 @testable import PocketCastsDataModel
 @testable import podcasts
 
-/// The one-shot resolves — a tapped chapter and a played bookmark — against an
-/// episode whose audio carries a dynamic ad the reference doesn't. Both run the
+/// Resolves a tapped chapter against an episode whose audio carries a dynamic
+/// ad the reference doesn't. These tests run the
 /// real bounded decode and matcher; only the audio and its reference are
 /// synthesized.
 @MainActor
@@ -85,38 +85,6 @@ final class FingerprintResolveTests: XCTestCase {
         // transcript highlighter reads may have moved.
         XCTAssertTrue(manager.debugMappingSnapshot().isEmpty)
         XCTAssertEqual(manager.state.analyticsName, "idle")
-    }
-
-    /// The bookmark variant of the same resolve. It differs only in waiting for a
-    /// streaming buffer, which a downloaded episode skips.
-    func testBookmarkSeekResolveFindsTheAdShiftedPlaybackTime() async throws {
-        let manager = FingerprintTimingManager()
-
-        let result = await manager.resolveBookmarkPlaybackTime(
-            forReferenceTime: Self.referenceCue,
-            episode: fixture.episode
-        )
-
-        guard case .resolved(let playbackTime, _, _, _) = result else {
-            XCTFail("expected a resolved bookmark seek, got \(result)")
-            return
-        }
-        XCTAssertEqual(playbackTime, Self.playbackCue, accuracy: 0.5)
-    }
-
-    /// The opposite direction: a bookmark is stored at a position in this
-    /// listener's audio, and reading the transcript at that moment needs the
-    /// reference time it corresponds to.
-    func testBookmarkReferenceResolveMapsPlaybackBackOntoTheReference() async throws {
-        let manager = FingerprintTimingManager()
-
-        let referenceTime = await manager.resolveReferenceTime(
-            forPlaybackTime: Self.playbackCue,
-            episode: fixture.episode
-        )
-
-        XCTAssertEqual(try XCTUnwrap(referenceTime), Self.referenceCue, accuracy: 0.5)
-        XCTAssertTrue(manager.debugMappingSnapshot().isEmpty)
     }
 
     /// A resolve against audio that isn't the reference's episode reports that it

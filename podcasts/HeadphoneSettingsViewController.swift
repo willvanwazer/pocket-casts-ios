@@ -3,12 +3,10 @@ import UIKit
 
 class HeadphoneSettingsViewController: PCTableViewController {
     private var allSections: [TableSection] = [
-        .init(rows: [.previousAction, .nextAction], footer: L10n.settingsHeadphoneControlsFooter),
-        .init(rows: [.bookmarkSound], footer: L10n.settingsBookmarkSoundFooter)
+        .init(rows: [.previousAction, .nextAction], footer: L10n.settingsHeadphoneControlsFooter)
     ]
 
     private var visibleSections: [TableSection] = []
-    private let bookmarksManager = BookmarkManager()
     private var cancellables = Set<AnyCancellable>()
 
     override func viewDidLoad() {
@@ -34,7 +32,7 @@ class HeadphoneSettingsViewController: PCTableViewController {
         let section = visibleSections[indexPath.section]
         let row = section.rows[indexPath.row]
 
-        let actions: [HeadphoneControlAction] = [.skipForward, .nextChapter, .skipBack, .previousChapter, .addBookmark]
+        let actions: [HeadphoneControlAction] = [.skipForward, .nextChapter, .skipBack, .previousChapter]
 
         switch row {
         case .nextAction:
@@ -44,15 +42,6 @@ class HeadphoneSettingsViewController: PCTableViewController {
         case .previousAction:
             showPicker(L10n.settingsPreviousAction, actions, currentValue: Settings.headphonesPreviousAction) { [weak self] in
                 self?.headphoneOptionChanged(to: $0, for: row)
-            }
-        case .bookmarkSound:
-            // Toggle the value when the row is tapped
-            let enabled = !Settings.playBookmarkCreationSound
-            updateBookmarkSoundEnabled(enabled)
-
-            // Change the switch state
-            if let cell = tableView.cellForRow(at: indexPath) as? SwitchCell {
-                cell.cellSwitch.setOn(enabled, animated: true)
             }
         }
     }
@@ -75,15 +64,6 @@ class HeadphoneSettingsViewController: PCTableViewController {
             cell.setImage(imageName: "settings_headphone_controls_skip_forward")
             cell.cellSecondaryLabel.text = Settings.headphonesNextAction.displayableTitle
             return cell
-
-        case .bookmarkSound:
-            let cell = tableView.dequeueReusableCell(SwitchCell.self, for: indexPath)
-            cell.cellLabel.text = L10n.settingsBookmarkConfirmationSound
-            cell.cellSwitch.isOn = Settings.playBookmarkCreationSound
-
-            cell.cellSwitch.removeTarget(self, action: nil, for: .valueChanged)
-            cell.cellSwitch.addTarget(self, action: #selector(bookmarkSoundToggled(_:)), for: .valueChanged)
-            return cell
         }
     }
 
@@ -103,22 +83,6 @@ class HeadphoneSettingsViewController: PCTableViewController {
         visibleSections[section].footer
     }
 
-    // MARK: - Bookmark Sound
-
-    @objc func bookmarkSoundToggled(_ sender: UISwitch) {
-        updateBookmarkSoundEnabled(sender.isOn)
-    }
-
-    private func updateBookmarkSoundEnabled(_ enabled: Bool) {
-        Settings.playBookmarkCreationSound = enabled
-        Settings.trackValueToggled(.settingsHeadphoneControlsBookmarkSoundToggled, enabled: enabled)
-
-        // Play a preview of the sound if the user has enabled the option
-        if enabled {
-            bookmarksManager.playTone()
-        }
-    }
-
     // MARK: - Headphone Option
 
     private func headphoneOptionChanged(to selection: HeadphoneControlAction, for row: TableSection.Row) {
@@ -132,8 +96,6 @@ class HeadphoneSettingsViewController: PCTableViewController {
             case .nextAction:
                 Settings.trackValueChanged(.settingsHeadphoneControlsNextChanged, value: selection)
                 Settings.headphonesNextAction = selection
-
-            default: break
             }
 
             self?.reloadData()
@@ -182,17 +144,8 @@ class HeadphoneSettingsViewController: PCTableViewController {
 
         enum Row {
             case previousAction, nextAction
-            case bookmarkSound
 
-            var visible: Bool {
-                switch self {
-                case .bookmarkSound:
-                    // Only show this option if the user has selected addBookmark as one of the options
-                    return Settings.isPlayBookmarkCreationSoundAvailable
-                default:
-                    return true
-                }
-            }
+            var visible: Bool { true }
         }
     }
 }
@@ -224,8 +177,6 @@ private extension HeadphoneControlAction {
             return L10n.siriShortcutPreviousChapter.localizedCapitalized
         case .nextChapter:
             return L10n.siriShortcutNextChapter.localizedCapitalized
-        case .addBookmark:
-            return L10n.addBookmark
         }
     }
 

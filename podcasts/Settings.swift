@@ -641,7 +641,6 @@ class Settings: NSObject {
         }
     }
 
-
     private static let lastWhatsNewShownKey = "LastWhatsNewShown"
     class var lastWhatsNewShown: String? {
         set {
@@ -1069,27 +1068,6 @@ class Settings: NSObject {
         }
     }
 
-
-    /// Returns whether the bookmark creation sound option is enabled
-    static var isPlayBookmarkCreationSoundAvailable: Bool {
-        [Settings.headphonesNextAction, Settings.headphonesPreviousAction].contains(.addBookmark)
-    }
-
-    /// Determines if we should play the sound when a bookmark is created
-    static var shouldPlayBookmarkSound: Bool {
-        isPlayBookmarkCreationSoundAvailable && playBookmarkCreationSound
-    }
-
-    static var playBookmarkCreationSound: Bool {
-        get {
-            Constants.UserDefaults.bookmarks.creationSound.value
-        }
-
-        set {
-            Constants.UserDefaults.bookmarks.creationSound.save(newValue)
-        }
-    }
-
     static var darkUpNextTheme: Bool {
         get {
             Constants.UserDefaults.appearance.darkUpNextTheme.value
@@ -1120,38 +1098,6 @@ class Settings: NSObject {
         }
         set {
             ServerSettings.setSkipForwardTime(newValue)
-        }
-    }
-
-    static var playerBookmarksSort: Binding<BookmarkSortOption> {
-        Binding {
-            Constants.UserDefaults.bookmarks.playerSort.value
-        } set: { newValue in
-            Constants.UserDefaults.bookmarks.playerSort.save(newValue)
-        }
-    }
-
-    static var episodeBookmarksSort: Binding<BookmarkSortOption> {
-        Binding {
-            Constants.UserDefaults.bookmarks.episodeSort.value
-        } set: { newValue in
-            Constants.UserDefaults.bookmarks.episodeSort.save(newValue)
-        }
-    }
-
-    static var podcastBookmarksSort: Binding<BookmarkSortOption> {
-        Binding {
-            Constants.UserDefaults.bookmarks.podcastSort.value
-        } set: { newValue in
-            Constants.UserDefaults.bookmarks.podcastSort.save(newValue)
-        }
-    }
-
-    static var profileBookmarksSort: Binding<BookmarkSortOption> {
-        Binding {
-            Constants.UserDefaults.bookmarks.profileSort.value
-        } set: { newValue in
-            Constants.UserDefaults.bookmarks.profileSort.save(newValue)
         }
     }
 
@@ -1280,17 +1226,6 @@ class Settings: NSObject {
         }
         set {
             UserDefaults.standard.setValue(newValue, forKey: Constants.UserDefaults.shouldShowUpNextSortDurationTip)
-        }
-    }
-
-    // MARK: - Smart Bookmarks Promo
-
-    static var shouldShowBookmarksPlayerTip: Bool {
-        get {
-            UserDefaults.standard.value(forKey: Constants.UserDefaults.bookmarks.showPlayerTip) as? Bool ?? true
-        }
-        set {
-            UserDefaults.standard.setValue(newValue, forKey: Constants.UserDefaults.bookmarks.showPlayerTip)
         }
     }
 
@@ -1575,8 +1510,6 @@ extension L10n {
 extension HeadphoneControl {
     init(action: HeadphoneControlAction) {
         switch action {
-        case .addBookmark:
-            self = .addBookmark
         case .nextChapter:
             self = .nextChapter
         case .previousChapter:
@@ -1591,7 +1524,7 @@ extension HeadphoneControl {
     var action: HeadphoneControlAction {
         switch self {
         case .addBookmark:
-            return .addBookmark
+            return .skipForward
         case .nextChapter:
             return .nextChapter
         case .previousChapter:

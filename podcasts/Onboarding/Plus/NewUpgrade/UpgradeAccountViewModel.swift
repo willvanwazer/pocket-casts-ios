@@ -78,8 +78,7 @@ class UpgradeAccountViewModel: PlusPurchaseModel {
         }
         var events = [TimelineEvent]()
 
-
-        let todayEvent = TimelineEvent(iconName: "unlocked-large", title: L10n.today, detail: L10n.upgradeAccountTimelineDay1)
+        let todayEvent = TimelineEvent(iconName: "unlocked-large", title: L10n.today, detail: L10n.upgradeAccountTimelineFeaturesDay1)
         events.append(todayEvent)
 
         let oneWeekBeforeDateLocalized = oneWeekBeforeDate.formatted(date: .abbreviated, time: .omitted)
@@ -260,8 +259,6 @@ private extension PlusUpgradeViewSource {
                 return .contextual
             case .upNextShuffle:
                 return .contextual
-            case .bookmarksLocked, .bookmarksShelfAction:
-                return .contextual
             case .folders, .suggestedFolders:
                 return .contextual
             default:
@@ -275,8 +272,6 @@ private extension PlusUpgradeViewSource {
                 return L10n.subscriptionFeatureCustomTitlePreSelectedChapters
             case .upNextShuffle:
                 return L10n.subscriptionFeatureCustomTitleShuffleUpnext
-            case .bookmarksLocked, .bookmarksShelfAction:
-                return L10n.subscriptionFeatureCustomTitleBookmarks
             case .folders, .suggestedFolders:
                 return L10n.subscriptionFeatureCustomTitleFolders
             default:
@@ -291,8 +286,6 @@ private extension PlusUpgradeViewSource {
                 PreSelectChaptersAnimationView()
             case .upNextShuffle:
                 UpNextShuffleAnimationView()
-            case .bookmarksLocked, .bookmarksShelfAction:
-                BookmarksAnimationView()
             case .folders, .suggestedFolders:
                 FoldersAnimationView()
             default:

@@ -34,7 +34,7 @@ class ReferralSendPassModel: ObservableObject {
     }
 
     var shareText: String {
-        L10n.referralsSharePassLongMessage(self.offerInfo.localizedOfferDurationAdjective)
+        L10n.referralsSharePassFeaturesMessage(self.offerInfo.localizedOfferDurationAdjective)
     }
 
     var shareSubject: String {

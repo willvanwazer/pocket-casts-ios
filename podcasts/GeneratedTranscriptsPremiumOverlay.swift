@@ -76,7 +76,7 @@ class GeneratedTranscriptsPremiumOverlay: UIViewController, AnalyticsSourceProvi
     private lazy var descriptionLabel: UILabel = {
         let description = UILabel()
         description.translatesAutoresizingMaskIntoConstraints = false
-        description.text = L10n.generatedTranscriptsOverlayDescription
+        description.text = L10n.generatedTranscriptsAccessDescription
         description.numberOfLines = 0
         description.font = .font(ofSize: 14, weight: .regular, scalingWith: .subheadline)
         description.adjustsFontForContentSizeCategory = true

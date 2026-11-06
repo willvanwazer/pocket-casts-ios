@@ -41,7 +41,7 @@ struct PaidStoryWallView2024: View {
                 .frame(width: geometry.size.width, height: geometry.size.width)
 
                 VStack(alignment: .leading, spacing: 0) {
-                    StoryFooter2024(title: L10n.playback2024PlusUpsellTitle, description: L10n.playback2024PlusUpsellDescription, subscriptionTier: .plus)
+                    StoryFooter2024(title: L10n.playback2024PlusUpsellTitle, description: L10n.playback2024PlusFeaturesDescription, subscriptionTier: .plus)
                     Button(L10n.playback2024PlusUpsellButtonTitle) {
                         guard let storiesViewController = SceneHelper.rootViewController() else {
                             return

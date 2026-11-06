@@ -217,8 +217,6 @@ extension ShareDestination {
             return "episode"
         case (_, .currentPosition):
             return "current_time"
-        case (_, .bookmark):
-            return "bookmark_time"
         case (.audio, _):
             return "clip_audio"
         case (_, .clip), (_, .clipShare):

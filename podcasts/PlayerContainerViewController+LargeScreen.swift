@@ -19,12 +19,10 @@ final class PlayerLargeScreenLayout {
     var horizontalSizeClass: UIUserInterfaceSizeClass?
     var constraints: [NSLayoutConstraint] = []
 
-    /// The transcript as the first tab when the tabs are next to Now Playing. When they're
-    /// paged, the transcript covers Now Playing instead (`transcriptsItem`).
+    /// The transcript page in either the split or paged arrangement.
     var transcriptTab: TranscriptViewController?
     var transcriptPaywall: GeneratedTranscriptsPremiumOverlay?
     var showingTranscript = false
-    var transcriptAvailability: (episodeUuid: String, isAvailable: Bool, hasGeneratedTranscripts: Bool)?
 
     /// The tab picked for an episode, selected again when the tabs are rebuilt, for example
     /// after rotating to the paged layout and back.
@@ -45,11 +43,6 @@ extension PlayerContainerViewController {
     var largeScreenHeaderViews: [UIView] {
         guard let layout = largeScreenLayout else { return [] }
         return [layout.grabber]
-    }
-
-    /// The pane that shows the transcript, which has to be its parent.
-    var largeScreenTranscriptParent: UIViewController? {
-        largeScreenLayout?.playerPane
     }
 
     func setUpLargeScreenLayout() {
@@ -88,8 +81,6 @@ extension PlayerContainerViewController {
         view.addInteraction(UIHingeInteraction { [weak layout] _, update in
             layout?.divider.isHidden = update.hinge?.status == .partiallyOpen
         })
-
-        addCustomObserver(Constants.Notifications.episodeTranscriptAvailabilityChanged, selector: #selector(largeScreenTranscriptAvailabilityDidChange(_:)))
 
         // Now Playing is a child of the player pane in both layouts.
         nowPlayingItem.willBeAddedToPlayer()
@@ -130,15 +121,10 @@ extension PlayerContainerViewController {
 
         layout.isSplit = isSplit
 
-        // The transcript is a tab next to Now Playing rather than covering it.
-        if isSplit, nowPlayingItem.displayTranscript {
-            nowPlayingItem.displayTranscript = false
-        }
-
         NSLayoutConstraint.deactivate(layout.constraints)
         // The tab pages leave before their scroll view can move to the other pane.
         removeLargeScreenTabPages()
-        for movingView: UIView in [headerView, mainScrollView, transcriptContainerView, closeBtn, layout.grabber, layout.divider, nowPlayingView] {
+        for movingView: UIView in [headerView, mainScrollView, closeBtn, layout.grabber, layout.divider, nowPlayingView] {
             movingView.removeFromSuperview()
         }
 
@@ -185,23 +171,10 @@ extension PlayerContainerViewController {
             ]
         }
 
-        // The transcript covers Now Playing down to its playback controls, like it does on iPhone.
-        playerPaneView.addSubview(transcriptContainerView)
-        constraints += [
-            isSplit
-                ? transcriptContainerView.topAnchor.constraint(equalTo: playerSafeArea.topAnchor, constant: 8)
-                : transcriptContainerView.topAnchor.constraint(equalTo: tabsView.topAnchor),
-            transcriptContainerView.leadingAnchor.constraint(equalTo: playerSafeArea.leadingAnchor),
-            transcriptContainerView.trailingAnchor.constraint(equalTo: playerSafeArea.trailingAnchor),
-            transcriptContainerView.bottomAnchor.constraint(equalTo: nowPlayingItem.bottomControlsStackView.topAnchor)
-        ]
-
-        coverWithTranscriptBackground()
-
         NSLayoutConstraint.activate(constraints)
         layout.constraints = constraints
 
-        mainScrollView.isScrollEnabled = isSplit || !nowPlayingItem.displayTranscript
+        mainScrollView.isScrollEnabled = true
         updateLargeScreenTabs(force: true)
     }
 
@@ -212,10 +185,10 @@ extension PlayerContainerViewController {
 
         tabsView.themeDidChange()
 
-        let shouldShowTranscript = layout.isSplit && isLargeScreenTranscriptAvailable(for: playingEpisode)
+        let shouldShowTranscript = isTranscriptAvailable(for: playingEpisode)
         let shouldShowNotes = (playingEpisode is Episode)
         let shouldShowChapters = PlaybackManager.shared.chapterCount() > 0
-        if !force, shouldShowTranscript == layout.showingTranscript, shouldShowNotes == showingNotes, shouldShowChapters == showingChapters, showingBookmarks {
+        if !force, shouldShowTranscript == layout.showingTranscript, shouldShowNotes == showingNotes, shouldShowChapters == showingChapters {
             return
         }
 
@@ -224,7 +197,6 @@ extension PlayerContainerViewController {
         layout.showingTranscript = shouldShowTranscript
         showingNotes = shouldShowNotes
         showingChapters = shouldShowChapters
-        showingBookmarks = true
 
         var tabs: [(PlayerTabs, PlayerItemViewController)] = []
         if shouldShowTranscript {
@@ -236,7 +208,6 @@ extension PlayerContainerViewController {
         if shouldShowChapters {
             tabs.append((.chapters, chaptersItem))
         }
-        tabs.append((.bookmarks, bookmarksItem))
 
         tabsView.tabs = (layout.isSplit ? [] : [.nowPlaying]) + tabs.map(\.0)
         tabsView.currentTab = largeScreenTabIndex(for: playingEpisode)
@@ -288,21 +259,21 @@ extension PlayerContainerViewController {
     private func largeScreenContentMargin(of tab: PlayerTabs) -> CGFloat? {
         switch tab {
         case .showNotes, .chapters: 20
-        case .bookmarks: 16
         case .nowPlaying, .transcript: nil
         }
     }
 
     /// The tab to select after rebuilding the tabs. Next to Now Playing, it's the one picked for
     /// the episode, or else the transcript when it can be read without Plus, or else Details.
-    /// Paged with Now Playing, it's always Now Playing.
+    /// Paged with Now Playing, it starts at Now Playing.
     private func largeScreenTabIndex(for episode: BaseEpisode) -> Int {
-        guard let layout = largeScreenLayout, layout.isSplit else { return 0 }
+        guard let layout = largeScreenLayout else { return 0 }
 
         if let selectedTab = layout.selectedTab, selectedTab.episodeUuid == episode.uuid,
            let index = tabsView.tabs.firstIndex(of: selectedTab.tab) {
             return index
         }
+        guard layout.isSplit else { return 0 }
         let defaultTab: PlayerTabs = canReadLargeScreenTranscript(of: episode) ? .transcript : .showNotes
         return tabsView.tabs.firstIndex(of: defaultTab) ?? 0
     }
@@ -328,7 +299,7 @@ extension PlayerContainerViewController {
     }
 
     private func removeLargeScreenTabPages() {
-        let items: [PlayerItemViewController] = [showNotesItem, chaptersItem, bookmarksItem]
+        let items: [PlayerItemViewController] = [showNotesItem, chaptersItem]
         for item in items where item.parent != nil {
             item.willMove(toParent: nil)
             item.view.removeFromSuperview()
@@ -354,6 +325,7 @@ extension PlayerContainerViewController {
         let transcriptTab = TranscriptViewController(playbackManager: PlaybackManager.shared)
         transcriptTab.usesLargeScreenStyle = true
         transcriptTab.isPlayerTab = true
+        transcriptTab.playButtonTapped = { _ in PlaybackManager.shared.playPause() }
         transcriptTab.scrollViewHandler = self
         transcriptTab.containerDelegate = self
         transcriptTab.view.translatesAutoresizingMaskIntoConstraints = false
@@ -365,35 +337,11 @@ extension PlayerContainerViewController {
         return transcriptTab
     }
 
-    /// Whether the episode has a transcript. Until `Episode.checkTranscriptAvailability()`
-    /// reports back for a new episode, it doesn't.
-    private func isLargeScreenTranscriptAvailable(for episode: BaseEpisode) -> Bool {
-        guard let layout = largeScreenLayout, let episode = episode as? Episode else { return false }
-
-        if let availability = layout.transcriptAvailability, availability.episodeUuid == episode.uuid {
-            return availability.isAvailable
-        }
-        layout.transcriptAvailability = (episode.uuid, false, false)
-        episode.checkTranscriptAvailability()
-        return false
-    }
-
     /// Whether the episode has a transcript that isn't behind the Plus paywall.
     private func canReadLargeScreenTranscript(of episode: BaseEpisode) -> Bool {
-        guard let availability = largeScreenLayout?.transcriptAvailability,
+        guard let availability = transcriptAvailability,
               availability.episodeUuid == episode.uuid, availability.isAvailable else { return false }
         return !(availability.hasGeneratedTranscripts && TranscriptViewController.generatedTranscriptsRequirePlus)
-    }
-
-    @objc private func largeScreenTranscriptAvailabilityDidChange(_ notification: Notification) {
-        guard let layout = largeScreenLayout,
-              let episodeUuid = notification.userInfo?["episodeUuid"] as? String,
-              let isAvailable = notification.userInfo?["isAvailable"] as? Bool,
-              episodeUuid == PlaybackManager.shared.currentEpisode?.uuid else { return }
-
-        let hasGeneratedTranscripts = notification.userInfo?["hasGeneratedTranscripts"] as? Bool ?? false
-        layout.transcriptAvailability = (episodeUuid, isAvailable, hasGeneratedTranscripts)
-        updateLargeScreenTabs(force: false)
     }
 
     /// Covers the transcript tab, not the whole player, with the Plus paywall for generated
@@ -406,9 +354,12 @@ extension PlayerContainerViewController {
         let paywall = GeneratedTranscriptsPremiumOverlay(playbackManager: PlaybackManager.shared)
         paywall.largeScreenBackground = artworkBackground
         paywall.view.translatesAutoresizingMaskIntoConstraints = false
-        paywall.dismissTranscript = { [weak self] in
-            guard let self, let index = self.tabsView.tabs.firstIndex(of: .transcript), index + 1 < self.tabsView.tabs.count else { return }
-            self.didSwitchToTab(index: index + 1)
+        paywall.dismissTranscript = { [weak self, weak layout] in
+            guard let self else { return }
+            let nextTab: PlayerTabs = layout?.isSplit == true ? .showNotes : .nowPlaying
+            if let index = self.tabsView.tabs.firstIndex(of: nextTab) {
+                self.didSwitchToTab(index: index)
+            }
         }
         paywall.purchaseSuccessfull = { [weak self] in
             self?.removeLargeScreenTranscriptPaywall()

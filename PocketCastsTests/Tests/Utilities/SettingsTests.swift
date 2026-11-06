@@ -10,7 +10,6 @@ final class SettingsTests: XCTestCase {
 
     private lazy var defaultPlayerActions: [PlayerAction] = {
         var actions: [PlayerAction] = [
-            .addBookmark,
             .markPlayed,
             .effects,
             .sleepTimer,
@@ -18,7 +17,6 @@ final class SettingsTests: XCTestCase {
             .shareEpisode,
             .addToPlaylist,
             .download,
-            .transcript,
             .goToPodcast,
             .starEpisode,
             .chromecast,
@@ -33,11 +31,28 @@ final class SettingsTests: XCTestCase {
         UserDefaults.standard.removePersistentDomain(forName: userDefaultsSuiteName)
     }
 
-    func testPlayerActions() throws {
+    func testPlayerActionsDiscardRetiredButtonsAndPreserveOtherCustomization() throws {
+        let previousActions = UserDefaults.standard.object(forKey: "PlayerActions")
+        defer { UserDefaults.standard.set(previousActions, forKey: "PlayerActions") }
         Settings.updatePlayerActions(PlayerAction.defaultActions.filter { $0.isAvailable }) // Set defaults
-        Settings.updatePlayerActions([.addBookmark, .markPlayed])
+        Settings.updatePlayerActions([.addBookmark, .markPlayed, .transcript])
 
         XCTAssertEqual(defaultPlayerActions, Settings.playerActions(), "Player actions should include changes from update")
+    }
+
+    func testSavedBookmarkHeadphoneActionsFallBackToSkipControls() {
+        let keys = ["headphones.previousAction", "headphones.nextAction"]
+        let previousValues = keys.map { UserDefaults.standard.object(forKey: $0) }
+        defer {
+            for (key, value) in zip(keys, previousValues) {
+                UserDefaults.standard.set(value, forKey: key)
+            }
+        }
+        let retiredAction = Data(#"{"addBookmark":{}}"#.utf8)
+        keys.forEach { UserDefaults.standard.set(retiredAction, forKey: $0) }
+
+        XCTAssertEqual(Settings.headphonesPreviousAction, .skipBack)
+        XCTAssertEqual(Settings.headphonesNextAction, .skipForward)
     }
 
     // MARK: - Encourage Account Creation cadence

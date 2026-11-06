@@ -3,7 +3,6 @@ import SwiftUI
 enum FeatureCardItem: String, CaseIterable, Identifiable {
     case desktop
     case folders
-    case bookmarks
     case wearOs
     case slumberStudio
     case storage
@@ -19,8 +18,6 @@ enum FeatureCardItem: String, CaseIterable, Identifiable {
             return L10n.plusFeatureCardTitleDesktop
         case .folders:
             return L10n.plusFeatureCardTitleFolders
-        case .bookmarks:
-            return L10n.plusFeatureCardTitleBookmarks
         case .wearOs:
             return L10n.plusFeatureCardTitleWearOs
         case .slumberStudio:
@@ -38,8 +35,6 @@ enum FeatureCardItem: String, CaseIterable, Identifiable {
             return L10n.plusFeatureCardTextDesktop
         case .folders:
             return L10n.plusFeatureCardTextFolders
-        case .bookmarks:
-            return L10n.plusFeatureCardTextBookmarks
         case .wearOs:
             return L10n.plusFeatureCardTextWearOs
         case .slumberStudio:

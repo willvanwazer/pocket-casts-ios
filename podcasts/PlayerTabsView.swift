@@ -10,8 +10,6 @@ enum PlayerTabs: Int {
     case nowPlaying
     case showNotes
     case chapters
-    case bookmarks
-    /// Only next to Now Playing in the large screen player (`FeatureFlag.largeScreenNowPlaying`)
     case transcript
 
     var description: String {
@@ -22,8 +20,6 @@ enum PlayerTabs: Int {
             return L10n.playerShowNotesTitle
         case .chapters:
             return L10n.chapters
-        case .bookmarks:
-            return L10n.bookmarks
         case .transcript:
             return L10n.transcript
         }
@@ -63,7 +59,7 @@ class PlayerTabsView: UIScrollView {
             case .chapters:
                 AnalyticsHelper.chaptersOpened()
                 trackChaptersShown()
-            case .bookmarks, .transcript:
+            case .transcript:
                 break
             }
         }
@@ -199,7 +195,6 @@ class PlayerTabsView: UIScrollView {
     }
 }
 
-
 private enum TabConstants {
     static let titleFont = UIFont.systemFont(ofSize: 15, weight: .semibold)
     static let spacing: CGFloat = 0
@@ -317,8 +312,6 @@ private extension PlayerTabsView {
             tabName = "show_notes"
         case .chapters:
             tabName = "chapters"
-        case .bookmarks:
-            tabName = "bookmarks"
         case .transcript:
             tabName = "transcript"
         }

@@ -81,12 +81,6 @@ class PlaybackManager: ServerPlaybackDelegate {
 
     private let analyticsPlaybackHelper = AnalyticsPlaybackHelper.shared
 
-    #if !APPCLIP
-    private(set) lazy var bookmarkManager: BookmarkManager = {
-        BookmarkManager(playbackManager: self)
-    }()
-    #endif
-
     private lazy var sleepTimerManager = SleepTimerManager()
 
     /// The player we should fallback to
@@ -2622,11 +2616,6 @@ class PlaybackManager: ServerPlaybackDelegate {
 private extension PlaybackManager {
     func handleRemoteAction(_ action: HeadphoneControlAction) {
         switch action {
-        case .addBookmark:
-            #if !APPCLIP
-            bookmark(source: .headphones)
-            #endif
-
         case .previousChapter:
             guard let chapter = chapterManager.previousVisibleChapter() else { fallthrough }
             FileLog.shared.addMessage("Skipping to previous chapter because Remote Skip Chapters is turned on")
@@ -2673,164 +2662,8 @@ extension PlaybackManager {
     }
 }
 
-// MARK: - Bookmarks
-
-#if !APPCLIP
-
-extension PlaybackManager {
-    private var bookmarksEnabled: Bool {
-        PaidFeature.bookmarks.isUnlocked
-    }
-
-    func bookmark(source: BookmarkAnalyticsSource) {
-        guard bookmarksEnabled, let episode = currentEpisode else {
-            return
-        }
-
-        let currentTime = self.currentTime
-        bookmarkManager.add(to: episode, at: currentTime, source: source)
-
-        playBookmarkCreationSoundIfNeeded(source: source)
-
-        Analytics.track(.bookmarkCreated, source: source, properties: [
-            "episode_uuid": episode.uuid,
-            "podcast_uuid": (episode as? Episode)?.podcastUuid ?? "user_file",
-            "time": Int(currentTime)
-        ])
-    }
-
-    /// Plays the bookmark creation sound only if:
-    /// - The source is from the headphones
-    /// - The user has the addBookmark option enabled in the Headphone Controls setting
-    /// - The bookmark sound setting is enabled
-    private func playBookmarkCreationSoundIfNeeded(source: BookmarkAnalyticsSource) {
-        guard source == .headphones, Settings.shouldPlayBookmarkSound else {
-            return
-        }
-
-        bookmarkManager.playTone()
-    }
-
-    private enum BookmarkPlayError: Error {
-        case episodeNotFound
-    }
-
-    /// Plays the given bookmark
-    /// - if the episode is not currently playing we'll load it and then play at the bookmark time
-    /// - if the episode is playing, we trigger a seek to the bookmark time
-    @MainActor
-    func playBookmark(_ bookmark: Bookmark, source: BookmarkAnalyticsSource) async throws {
-        guard bookmarksEnabled else { return }
-
-        let dataManager = DataManager.shared
-
-        // Get the bookmark's BaseEpisode so we can load it, fetching it from the server if it's missing
-        var foundEpisode = bookmark.episode ?? dataManager.findBaseEpisode(uuid: bookmark.episodeUuid)
-
-        if foundEpisode == nil, let podcastUuid = bookmark.podcastUuid {
-            foundEpisode = try await ServerPodcastManager.shared.addMissingPodcastAndEpisode(episodeUuid: bookmark.episodeUuid, podcastUuid: podcastUuid)
-        }
-
-        guard let episode = foundEpisode else {
-            throw BookmarkPlayError.episodeNotFound
-        }
-
-        Analytics.track(.bookmarkPlayTapped, source: source)
-
-        analyticsPlaybackHelper.currentSource = .bookmark
-
-        #if !os(watchOS) && !os(tvOS)
-        // A bookmark's `referenceTime` sits on the transcript's canonical timeline, which
-        // dynamic ads have shifted in this device's audio, so the stored time may point at
-        // the wrong content. Keep the player paused while fingerprinting resolves the true
-        // position, then start there.
-        if FeatureFlag.syncedTranscripts.enabled, let referenceTime = bookmark.referenceTime {
-            await playBookmarkAfterResolving(bookmark, referenceTime: referenceTime, episode: episode)
-            return
-        }
-        #endif
-
-        // If we're already the now playing episode, then just seek to the bookmark time
-        if isCurrentEpisode(uuid: bookmark.episodeUuid) {
-            seekTo(time: bookmark.time, startPlaybackAfterSeek: true)
-            return
-        }
-
-        #if !os(watchOS)
-        // Save the playback time before we start playing so the player will jump to the correct starting time when it does load
-        dataManager.saveEpisode(playedUpTo: bookmark.time, episode: episode, updateSyncFlag: false)
-        dataManager.saveEpisode(playingStatus: .inProgress, episode: episode, updateSyncFlag: false)
-        // Start the play process
-        PlaybackActionHelper.play(episode: episode, podcastUuid: bookmark.podcastUuid)
-        #endif
-    }
-
-    #if !os(watchOS) && !os(tvOS)
-    /// Puts the bookmark's episode in the player, paused at the stored time, while
-    /// fingerprinting resolves where the bookmark's content actually sits in this
-    /// device's audio, then starts playback there (or at the stored time when no
-    /// confident match is found).
-    ///
-    /// The wait is bounded by the resolve's own timeout, and the bookmark row's spinner
-    /// covers it — `playBookmark`'s callers keep it up until this returns. Loading the
-    /// episode first isn't just for the UI: it kicks off the stream-and-cache download
-    /// whose audio the resolve fingerprints, so a not-yet-local episode can still match.
-    ///
-    /// If the listener takes over while we're resolving — seeks away, starts playback,
-    /// or loads another episode — the result is discarded and the player is left alone.
-    @MainActor
-    private func playBookmarkAfterResolving(_ bookmark: Bookmark, referenceTime: TimeInterval, episode: BaseEpisode) async {
-        // Position the player at the stored time — the best estimate until the resolve
-        // lands, and where playback falls back to. Pause before seeking so no audio from
-        // the wrong position slips out.
-        if isCurrentEpisode(uuid: bookmark.episodeUuid) {
-            pause(userInitiated: false)
-            seekTo(time: bookmark.time)
-        } else {
-            DataManager.shared.saveEpisode(playedUpTo: bookmark.time, episode: episode, updateSyncFlag: false)
-            DataManager.shared.saveEpisode(playingStatus: .inProgress, episode: episode, updateSyncFlag: false)
-            load(episode: episode, autoPlay: false, overrideUpNext: false)
-            // Create the player item now (playing would, but we aren't yet) — this is
-            // what starts the stream-and-cache download.
-            loadCurrentEpisode()
-        }
-
-        let result = await FingerprintTimingManager.shared.resolveBookmarkPlaybackTime(
-            forReferenceTime: referenceTime,
-            episode: episode
-        )
-
-        // The listener took over while we were resolving; leave things where they put them.
-        guard isCurrentEpisode(uuid: bookmark.episodeUuid), !isPlaying,
-              abs(currentTime - bookmark.time) < 1 else {
-            FileLog.shared.addMessage(
-                "[Bookmarks] Playback moved while resolving bookmark \(bookmark.uuid) — not starting playback"
-            )
-            return
-        }
-
-        let time: TimeInterval
-        switch result {
-        case let .resolved(playbackTime, _, _, resolveDurationMs):
-            time = playbackTime
-            FileLog.shared.addMessage(
-                "[Bookmarks] Resolved bookmark \(bookmark.uuid) — stored time "
-                    + "\(String(format: "%.1f", bookmark.time))s, reference time \(String(format: "%.1f", referenceTime))s, "
-                    + "starting playback at \(String(format: "%.1f", playbackTime))s (took \(resolveDurationMs)ms)"
-            )
-        case let .unresolved(reason, _):
-            time = bookmark.time
-            FileLog.shared.addMessage(
-                "[Bookmarks] No confident match for bookmark \(bookmark.uuid) (\(reason)) — starting "
-                    + "playback at the stored time \(String(format: "%.1f", bookmark.time))s"
-            )
-        }
-        seekTo(time: time, startPlaybackAfterSeek: true)
-    }
-    #endif
-}
-
 // MARK: - SearchResults
+#if !APPCLIP
 extension PlaybackManager {
 
     private enum SearchResultPlayError: Error {

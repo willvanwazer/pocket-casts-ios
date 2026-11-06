@@ -74,7 +74,7 @@ struct PaidStoryWallView2025: StoryView {
                     .padding(.top, isSmallScreen ? 80 : 110)
                     .allowsHitTesting(false)
                 StoryFooter2025(title: tier == .none ?  L10n.playback2025PlusUpsellTitle : L10n.playback2025PlusThanksTitle,
-                                description: tier == .none ?  L10n.playback2025PlusUpsellDescription : L10n.playback2025PlusThanksDescription(tier.displayNameShort),
+                                description: tier == .none ?  L10n.playback2025PlusFeaturesDescription : L10n.playback2025PlusThanksDescription(tier.displayNameShort),
                                 subscriptionTier: tier == .none ? .plus : tier)
                 Button(tier == .none ?  L10n.playback2025PlusUpsellButtonTitle : L10n.continue) {
                     if tier == .none {

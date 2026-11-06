@@ -100,7 +100,6 @@ extension TranscriptContainerViewController: PlayerItemContainerDelegate {
 
     func scrollToCurrentChapter() { }
     func scrollToNowPlaying() { }
-    func scrollToBookmarks() { }
     func navigateToPodcast() { }
 }
 

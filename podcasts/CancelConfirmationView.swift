@@ -15,7 +15,7 @@ struct CancelConfirmationView: View {
 
         self.rows = [
             .init(imageName: "dollar-recycle-gold", text: L10n.cancelConfirmSubExpiry(expiration ?? L10n.cancelConfirmSubExpiryDateFallback), highlight: expiration),
-            .init(imageName: "locked-large", text: L10n.cancelConfirmItemPlus),
+            .init(imageName: "locked-large", text: L10n.cancelConfirmPlusFeatures),
             .init(imageName: "folder-cross", text: L10n.cancelConfirmItemFolders),
             .init(imageName: "remove_from_cloud", text: L10n.cancelConfirmItemUploads),
             .init(imageName: "filter_clock", text: L10n.cancelConfirmItemHistory)

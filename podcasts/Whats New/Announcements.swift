@@ -145,10 +145,4 @@ enum AnnouncementFlow {
 
     /// Show the autoplay settings
     case autoPlay
-
-    /// Show the player and highlight the Add Bookmark item
-    case bookmarksPlayer
-
-    /// Show the headphone controls action for Bookmarks
-    case bookmarksProfile
 }

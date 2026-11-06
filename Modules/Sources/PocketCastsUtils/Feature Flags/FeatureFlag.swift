@@ -219,20 +219,12 @@ public enum FeatureFlag: String, CaseIterable {
     /// A new "Troubleshooting" screen for detecting orphaned episodes and more.
     case troubleshooting
 
-    /// Enable Smart Bookmarks
-    case smartBookmarks
-
     /// Use best frame when capturing a thumbnail for video cells
     case captureBestFrame
 
     /// Make the tab bar's minimize-on-scroll behavior opt-in: it's off unless the
     /// user turns it on in Appearance
     case minimizeTabsOptIn
-
-    /// Introduce Smart Bookmarks with a tip in the player and a "New" badge on the Add Bookmark row.
-    ///
-    /// The promo runs for 8.19, 8.20 and 8.21 only. Remove this flag and `SmartBookmarksPromo` when 8.22 is cut.
-    case smartBookmarksPromo
 
     /// Show a Live Activity on the Lock Screen and Dynamic Island while the sleep timer is running
     case sleepTimerLiveActivity
@@ -434,13 +426,9 @@ public enum FeatureFlag: String, CaseIterable {
             true
         case .troubleshooting:
             true
-        case .smartBookmarks:
-            true
         case .captureBestFrame:
             true
         case .minimizeTabsOptIn:
-            true
-        case .smartBookmarksPromo:
             true
         case .sleepTimerLiveActivity:
             true

@@ -52,13 +52,6 @@ extension ShelfActionsViewController: UITableViewDelegate, UITableViewDataSource
             } else {
                 cell.actionIcon.tintColor = ThemeColor.playerContrast02()
             }
-
-            // Disable transcript if not available
-            let isTranscriptsAndIsDisable = action == .transcript && !isTranscriptEnabled
-            if isTranscriptsAndIsDisable {
-                cell.actionIcon.tintColor = ThemeColor.playerContrast04()
-                cell.actionName.textColor = ThemeColor.playerContrast04()
-            }
         } else {
             cell.actionName.text = action.title(episode: nil)
             cell.actionIcon.image = UIImage(named: action.iconName(episode: nil))
@@ -72,7 +65,7 @@ extension ShelfActionsViewController: UITableViewDelegate, UITableViewDataSource
         cell.actionSubtitle.text = (tableView.isEditing && playingEpisode is UserEpisode) ? action.subtitle() : nil
         cell.actionSubtitle.isHidden = (cell.actionSubtitle.text == nil)
 
-        cell.showsNewBadge = !tableView.isEditing && action == .addBookmark && SmartBookmarksPromo.isActive
+        cell.showsNewBadge = false
 
         return cell
     }
@@ -82,20 +75,18 @@ extension ShelfActionsViewController: UITableViewDelegate, UITableViewDataSource
 
         let action = actionAt(indexPath: indexPath, isEditing: tableView.isEditing)
 
-        if action == .transcript && !isTranscriptEnabled {
-            Toast.show(TranscriptError.notAvailable.localizedDescription)
-            return
-        }
 
         Analytics.track(.playerShelfActionTapped, properties: ["action": action.analyticsDescription, "from": "overflow_menu"])
 
         dismiss(animated: true) {
             guard action.isUnlocked else {
-                action.paidFeature?.presentUpgradeController(from: self, source: action == .addBookmark ? .bookmarksShelfAction : .overflowMenu)
+                action.paidFeature?.presentUpgradeController(from: self, source: .overflowMenu)
                 return
             }
 
             switch action {
+            case .addBookmark, .transcript:
+                break
             case .starEpisode:
                 self.playerActionsDelegate?.starEpisodeTapped()
             case .effects:
@@ -114,11 +105,7 @@ extension ShelfActionsViewController: UITableViewDelegate, UITableViewDataSource
                 self.playerActionsDelegate?.markPlayedTapped()
             case .archive:
                 self.playerActionsDelegate?.archiveTapped()
-            case .addBookmark:
-                self.playerActionsDelegate?.bookmarkTapped()
-            case .transcript:
-                self.playerActionsDelegate?.transcriptTapped()
-            case.download:
+            case .download:
                 self.playerActionsDelegate?.downloadTapped()
             case .addToPlaylist:
                 self.playerActionsDelegate?.presentManualPlaylistsChooser()

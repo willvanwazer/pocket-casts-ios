@@ -6,7 +6,6 @@ import SwiftUI
 // MARK: - Features
 
 extension PaidFeature {
-    static var bookmarks: PaidFeature = .plusFeature
     static var deselectChapters: PaidFeature = .plusFeature
     static var slumber: PaidFeature = .plusFeature
     static var syncedTranscripts: PaidFeature = .plusFeature
@@ -102,7 +101,6 @@ extension PaidFeature {
     }
 }
 #endif
-
 
 // MARK: - Private: Feature State Helpers
 

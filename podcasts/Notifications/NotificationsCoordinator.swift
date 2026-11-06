@@ -67,7 +67,7 @@ enum NotificationType: String {
         case .onboardingFilters:
             return L10n.notificationsOnboardingFiltersBody
         case .onboardingUpsell:
-            return L10n.notificationsOnboardingUpsellBody
+            return L10n.notificationsOnboardingFeaturesBody
         case .onboardingStaffPicks:
             return L10n.notificationsOnboardingStaffPicksBody
         case .reengagementWeekly:
@@ -79,7 +79,7 @@ enum NotificationType: String {
         case .recommendationsYouMightLike:
             return L10n.notificationsRecommendationsYouMightLikeBody
         case .upsell:
-            return L10n.notificationsOffersUpsellBody
+            return L10n.notificationsOffersFeaturesBody
         case .newFeatureSuggestedFolders:
             return L10n.notificationsNewFeatureSuggestedFoldersBody
         }

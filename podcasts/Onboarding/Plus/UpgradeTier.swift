@@ -44,7 +44,6 @@ extension UpgradeTier {
             generatedTranscriptsFeature,
             foldersFeature,
             upNextShuffleFeature,
-            bookmarksFeature,
             deselectChaptersFeature,
             cloudFeature,
             extraThemesIconsFeature,
@@ -59,7 +58,6 @@ extension UpgradeTier {
             generatedTranscriptsFeature,
             foldersFeature,
             upNextShuffleFeature,
-            bookmarksFeature,
             deselectChaptersFeature,
             cloudFeature,
             extraThemesIconsFeature,
@@ -94,10 +92,6 @@ extension UpgradeTier {
 
     static var upNextShuffleFeature: UpgradeTier.TierFeature {
         TierFeature(iconName: "plus-feature-up-next-shuffle", title: L10n.featureMarketingUpNextShuffle)
-    }
-
-    static var bookmarksFeature: UpgradeTier.TierFeature {
-        TierFeature(iconName: "plus-feature-bookmarks", title: L10n.featureMarketingBookmarks)
     }
 
     static var deselectChaptersFeature: UpgradeTier.TierFeature? {

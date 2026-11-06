@@ -39,17 +39,16 @@ extension PlayerContainerViewController {
 
         let shouldShowNotes = (playingEpisode is Episode)
         let shouldShowChapters = PlaybackManager.shared.chapterCount() > 0
-        let shouldShowBookmarks = true
+        let shouldShowTranscript = isTranscriptAvailable(for: playingEpisode)
 
         // check to see if the visible views are already configured correctly
         if shouldShowNotes == showingNotes,
             shouldShowChapters == showingChapters,
-            shouldShowBookmarks == showingBookmarks {
+            shouldShowTranscript == showingTranscript {
             return
         }
 
-        mainScrollView.setContentOffset(CGPoint.zero, animated: false)
-        tabsView.currentTab = 0
+        let selectedTab = tabsView.tabs[safe: tabsView.currentTab] ?? .nowPlaying
         showNotesItem.removeFromParent()
         showNotesItem.view.removeFromSuperview()
         showingNotes = false
@@ -58,13 +57,28 @@ extension PlayerContainerViewController {
         chaptersItem.view.removeFromSuperview()
         showingChapters = false
 
-        bookmarksItem.removeFromParent()
-        bookmarksItem.view.removeFromSuperview()
-        showingBookmarks = false
+        if transcriptsItem.parent != nil {
+            transcriptsItem.willBeRemovedFromPlayer()
+            transcriptsItem.willMove(toParent: nil)
+            transcriptsItem.view.removeFromSuperview()
+            transcriptsItem.removeFromParent()
+        }
+        showingTranscript = false
 
+        // Uploaded files can have no secondary pages. Keep the content width closed
+        // at Now Playing even after removing the previous episode's tabs.
+        finalScrollViewConstraint?.isActive = false
+        finalScrollViewConstraint = nowPlayingItem.view.trailingAnchor.constraint(equalTo: mainScrollView.trailingAnchor)
+        finalScrollViewConstraint?.isActive = true
         tabsView.tabs = [.nowPlaying]
 
         var previousTab: PlayerItemViewController = nowPlayingItem
+
+        if shouldShowTranscript {
+            showingTranscript = true
+            tabsView.tabs += [.transcript]
+            addTab(transcriptsItem, previousTab: &previousTab)
+        }
 
         if shouldShowNotes {
             showingNotes = true
@@ -80,12 +94,10 @@ extension PlayerContainerViewController {
             addTab(chaptersItem, previousTab: &previousTab)
         }
 
-        if shouldShowBookmarks {
-            showingBookmarks = true
-            tabsView.tabs += [.bookmarks]
-
-            addTab(bookmarksItem, previousTab: &previousTab)
-        }
+        tabsView.currentTab = tabsView.tabs.firstIndex(of: selectedTab) ?? 0
+        view.layoutIfNeeded()
+        let offset = CGFloat(tabsView.currentTab) * mainScrollView.bounds.width
+        mainScrollView.setContentOffset(CGPoint(x: offset, y: 0), animated: false)
         #endif
     }
 
@@ -117,6 +129,7 @@ extension PlayerContainerViewController {
         ])
 
         finalScrollViewConstraint = finalConstraint
+        tab.didMove(toParent: self)
         return true
     }
 }

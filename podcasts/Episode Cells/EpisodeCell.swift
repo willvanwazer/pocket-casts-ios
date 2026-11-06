@@ -27,7 +27,6 @@ class EpisodeCell: ThemeableSwipeCell, MainEpisodeActionViewDelegate {
             downloadingIndicator.transform = CGAffineTransform(scaleX: 0.75, y: 0.75)
         }
     }
-    @IBOutlet var bookmarkIcon: UIImageView!
 
     @IBOutlet var informationLabel: ThemeableLabel! {
         didSet {
@@ -233,12 +232,6 @@ class EpisodeCell: ThemeableSwipeCell, MainEpisodeActionViewDelegate {
         updateSize()
     }
 
-
-    /// Determines whether the bookmark indicator icon should appear
-    private var showBookmarksIcon: Bool {
-        PaidFeature.bookmarks.isUnlocked && episode?.hasBookmarks == true
-    }
-
     private func populate(progressOnly: Bool) {
         guard let episode else { return }
 
@@ -261,14 +254,6 @@ class EpisodeCell: ThemeableSwipeCell, MainEpisodeActionViewDelegate {
                 uploadStatusIndicator.isHidden = true
             }
 
-            // Since this calls out to the DB we'll cache the value here so later calls don't hit it again
-            let showBookmarksIcon = self.showBookmarksIcon
-
-            // Setup the bookmarks icon
-            bookmarkIcon.image = UIImage(named: "bookmark-icon-episode")
-            bookmarkIcon.tintColor = mainTintColor
-            bookmarkIcon.isHidden = !showBookmarksIcon
-
             let hideStatus = !episode.archived && !episode.wasDeleted && !episode.downloaded(pathFinder: DownloadManager.shared) && !episode.downloadFailed() && !uploadFailed && !episode.playbackError()
             if !hideStatus {
                 let statusImage: UIImage?
@@ -277,12 +262,7 @@ class EpisodeCell: ThemeableSwipeCell, MainEpisodeActionViewDelegate {
                 } else if episode.downloaded(pathFinder: DownloadManager.shared) {
                     statusImage = UIImage(named: "list_downloaded")
                 } else {
-                    // To show the archive and bookmark indicator in the correct places we show the bookmark indicator
-                    // in the status image, and move the archive icon into the bookmarks place.
-                    if showBookmarksIcon {
-                        statusImage = UIImage(named: "bookmark-icon-episode")?.tintedImage(mainTintColor ?? ThemeColor.primaryIcon02())
-                        bookmarkIcon.image = UIImage(named: "list_archived")?.tintedImage(ThemeColor.primaryIcon02())
-                    } else if episode.wasDeleted {
+                    if episode.wasDeleted {
                         statusImage = UIImage(named: "option-cross-circle")?.tintedImage(ThemeColor.primaryIcon02())
                     } else if episode.archived {
                         statusImage = UIImage(named: "list_archived")?.tintedImage(ThemeColor.primaryIcon02())
@@ -706,7 +686,6 @@ class EpisodeCell: ThemeableSwipeCell, MainEpisodeActionViewDelegate {
         statusIndicator.updateSizeConstraints(to: iconSize)
         uploadStatusIndicator.updateSizeConstraints(to: iconSize)
         upNextIndicator.updateSizeConstraints(to: iconSize)
-        bookmarkIcon.updateSizeConstraints(to: iconSize)
         starIndicator.updateSizeConstraints(to: iconSize)
         downloadingIndicator.updateSizeConstraints(to: iconSize)
         videoIndicator.updateSizeConstraints(to: iconSize)

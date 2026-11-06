@@ -9,7 +9,7 @@ struct PaidStoryWallView: View {
                 StoryLabelContainer(geometry: geometry) {
                     SubscriptionBadge(tier: .plus, displayMode: .gradient, foregroundColor: .black)
                     StoryLabel(L10n.eoyTheresMore, for: .title, geometry: geometry)
-                    StoryLabel(L10n.eoySubscribeToPlus, for: .subtitle, color: Color(hex: "8F97A4"), geometry: geometry)
+                    StoryLabel(L10n.eoySubscribeToPlusFeatures, for: .subtitle, color: Color(hex: "8F97A4"), geometry: geometry)
                 }
                 .padding(.bottom, geometry.size.height * 0.06)
 
