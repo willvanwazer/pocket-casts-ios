@@ -89,4 +89,11 @@ The build result and commit record are in
 This verifies branch fetching and actual compilation. Signing, phone
 installation, and runtime behavior require their own checks.
 
+A separate development variant was subsequently signed, installed, and launched
+on a physical iPhone. Its local configuration uses a distinct app identity and
+app group. CarPlay entitlements were excluded from that development variant
+because they require separate approval from Apple. The branch builder above
+continues to produce unsigned compilation artifacts; personal signing settings
+remain local to the Mac.
+
 Reference: [Apple's Xcode requirements](https://developer.apple.com/xcode/system-requirements/).
