@@ -68,7 +68,7 @@ development variant still needs a unique bundle identifier, matching app groups
 and extension identifiers, and provisioning under the developer's own Apple team.
 That is a separate local build/install step after compilation succeeds.
 
-## Setup verification, November 5, 2026
+## Build verification, November 6, 2026
 
 The local command is installed and its isolated checkout was prepared from the
 fork. Checks verified rejection of an old toolchain, invalid branch names, a
@@ -76,8 +76,17 @@ dirty checkout, and overlapping builds. Simulated tool results verified that a
 tool-level error with exit code zero is still recorded as failure, and that a
 successful result is recorded with its commit and logs.
 
-Full compilation remains blocked by macOS 26.5.2 / Xcode 26.6 on the builder Mac;
-the current application source requires Xcode 27.1+. Do not treat preparation or
-preflight checks as evidence of a successful app build.
+After updating to macOS 26.7.2 and Xcode 27.2 and completing Xcode's first-launch
+setup, the real command built `codex/pocketcasts-integration` at commit
+`e5cf85793505297c8ef890f2273f936e60c7bcda` successfully in about five minutes.
+The resulting iOS 27.2 SDK device app reports version 8.24 (8.24.0.1), contains
+six extensions and the Watch app, and remains unsigned. The dedicated checkout
+was still clean after the build. Xcode's only reported diagnostic was the
+expected external-contributor credentials warning.
+
+The build result and commit record are in
+`~/Library/Developer/PocketCastsBuilder/runs/20261106T145801.898195Z-e5cf85793505/`.
+This verifies branch fetching and actual compilation. Signing, phone
+installation, and runtime behavior require their own checks.
 
 Reference: [Apple's Xcode requirements](https://developer.apple.com/xcode/system-requirements/).
